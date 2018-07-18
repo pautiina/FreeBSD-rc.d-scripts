@@ -1,0 +1,56 @@
+#!/bin/sh
+# PROVIDE: cpuset-ix-manualy
+# REQUIRE: FILESYSTEMS
+# BEFORE:  netif
+# KEYWORD: nojail
+case "$1" in
+*start)
+  echo "Binding ix(4) IRQs to CPUs"
+################################################################################################################################
+  # Number of Interface
+  ix_index=0
+
+  # Count for 1-st IX interface
+  start_cpu=0
+  end_cpu=5
+
+  vmstat -ai | grep ix$ix_index | sed -E '/^irq.*q/!d; s/^irq([0-9]+): ix([0-9]+):q([0-9]+).*/\1 \2 \3/' |\
+
+  while read irq ix q
+    do
+      while [ $start_cpu -le $end_cpu ]
+        do
+          CPU=$start_cpu
+          echo Bind interface ix$ix_index IRQ:$irq to CPU: $CPU
+          /usr/bin/cpuset -l $CPU -x $irq
+          start_cpu=`expr $start_cpu + 1`
+          continue 2
+        done
+      exit
+    done
+################################################################################################################################
+  # Number of Interface
+  ix_index=1
+
+  # Count for 2-st IX interface
+  start_cpu=6
+  end_cpu=11
+
+  vmstat -ai | grep ix$ix_index | sed -E '/^irq.*q/!d; s/^irq([0-9]+): ix([0-9]+):q([0-9]+).*/\1 \2 \3/' |\
+
+  while read irq ix q
+    do
+      while [ $start_cpu -le $end_cpu ]
+        do
+          CPU=$start_cpu
+          echo Bind interface ix$ix_index IRQ:$irq to CPU: $CPU
+          /usr/bin/cpuset -l $CPU -x $irq
+          start_cpu=`expr $start_cpu + 1`
+          continue 2
+        done
+      exit
+    done
+################################################################################################################################
+
+  ;;
+esac
