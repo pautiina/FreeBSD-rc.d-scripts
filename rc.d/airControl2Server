@@ -1,0 +1,52 @@
+
+# PROVIDE: aircontrol2
+# REQUIRE: LOGIN postgresql
+# KEYWORD: shutdown
+
+#
+# Add the following line to /etc/rc.conf to enable `aircontrol2':
+#
+# aircontrol2_enable="YES"
+# aircontrol2_chdir="/var/www/AirControl2"
+
+. /etc/rc.subr
+
+name=aircontrol2
+
+rcvar=${name}_enable
+
+start_cmd=aircontrol2_start
+stop_cmd=aircontrol2_stop
+restart_cmd=aircontrol2_restart
+status_cmd=aircontrol2_status
+
+load_rc_config ${name}
+aircontrol2_bin=./airControl2Server
+command=${aircontrol2_bin}
+extra_commands="status"
+
+: ${aircontrol2_enable:="NO"}
+: ${aircontrol2_chdir:="/var/www/AirControl2"}
+
+aircontrol2_start() {
+    checkyesno ${name}_enable && \
+        cd ${aircontrol2_chdir}
+        ${aircontrol2_bin} start
+}
+aircontrol2_stop() {
+    checkyesno ${name}_enable && \
+        cd ${aircontrol2_chdir}
+        ${aircontrol2_bin} stop
+}
+aircontrol2_restart() {
+    checkyesno ${name}_enable && \
+        cd ${aircontrol2_chdir}
+        ${aircontrol2_bin} restart
+}
+aircontrol2_status() {
+    checkyesno ${name}_enable && \
+        cd ${aircontrol2_chdir}
+        ${aircontrol2_bin} status
+}
+
+run_rc_command "$1"
