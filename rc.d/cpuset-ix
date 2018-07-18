@@ -1,0 +1,16 @@
+#!/bin/sh
+# PROVIDE: cpuset-ix
+# REQUIRE: FILESYSTEMS
+# BEFORE:  netif
+# KEYWORD: nojail
+case "$1" in
+*start)
+  echo "Binding ix(4) IRQs to CPUs"
+  cpus=`sysctl -n kern.smp.cpus`
+  vmstat -ai | sed -E '/^irq.*q/!d; s/^irq([0-9]+): ix([0-9]+):q([0-9]+).*/\1 \2 \3/' |\
+  while read irq ix q
+  do
+    /usr/bin/cpuset -l $(( ($ix+$q) % $cpus )) -x $irq
+  done
+  ;;
+esac
