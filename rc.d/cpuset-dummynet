@@ -1,0 +1,10 @@
+#!/bin/sh
+# PROVIDE: cpuset-dummynet
+# REQUIRE: FILESYSTEMS
+# BEFORE:  netif
+# KEYWORD: nojail
+case "$1" in
+*start)
+/usr/bin/cpuset -l 0 -t $(procstat -t 0 | /usr/bin/awk '/dummynet/ {print $2}')
+;;
+esac
