@@ -1,0 +1,148 @@
+#!/bin/sh
+#
+# Pautina rev.011 2018-12-20
+#
+
+# PROVIDE: ipfw_paysystems
+# REQUIRE: LOGIN FILESYSTEMS ipfw
+# KEYWORD: shutdown
+
+#
+# Add the following line to /etc/rc.conf to enable ipfw_paysystems:
+# ipfw_paysystems_enable="YES"
+#
+# You can manualy list domains on string 
+#  or use some path to file
+# ipfw_paysystems_allow_sites="/path/to/file"
+#  or
+# ipfw_paysystems_allow_sites="www.liqpay.ua meta.ua"
+#
+
+. /etc/rc.subr
+
+name=ipfw_paysystems
+rcvar=ipfw_paysystems_enable
+load_rc_config $name
+
+start_cmd=${name}_start
+stop_cmd=${name}_stop
+status_cmd="${name}_status"
+restart_cmd=${name}_restart
+mainstart_cmd=do_cmd
+extra_commands="mainstart"
+
+# Set defaults
+: ${ipfw_paysystems_enable:="YES"}
+: ${ipfw_paysystems_allow_sites:="www.liqpay.ua static.liqpay.ua fonts.googleapis.com www.google-analytics.com fonts.gstatic.com socauth.privatbank.ua"}
+: ${ipfw_paysystems_table_name:="PAYSYSTEMS"}
+: ${ipfw_paysystems_run_time:="01:26"}
+: ${ipfw_paysystems_log_file:=""}
+
+
+pidfile=/var/run/$name.pid
+dir_script_path="$(realpath)"
+script_name="$(basename "$0")"
+procname="${dir_script_path}/${script_name}"
+
+ipfw_paysystems_start()
+{
+	if [ -r ${pidfile} ]; then
+		echo "Already running: `cat ${pidfile}`"
+		exit 0
+	fi
+
+	/usr/sbin/daemon -f -p ${pidfile} "${procname}" mainstart
+
+	if [ -r ${pidfile} ]; then
+                echo "${name} STARTED at PID: `cat ${pidfile}`"
+                exit 0
+        fi
+}
+
+ipfw_paysystems_status()
+{
+	if [ -r ${pidfile} ]; then
+		echo "${name} running at PID: `cat ${pidfile}`"
+		exit 0
+	else
+		echo "${name} NOT running"
+	fi
+}
+
+do_cmd()
+{
+	# Run main function
+	main_cmd
+
+	while [ true ]; do
+
+	if [ `date -j +"%H:%M"` = "${ipfw_paysystems_run_time}" ]; then
+		# Run main function
+		main_cmd
+	fi
+			sleep 60
+	done
+}
+
+main_cmd()
+{
+        if [ -r "${ipfw_paysystems_allow_sites}" ]; then
+                ipfw_paysystems_allow_sites=$( /bin/cat "${ipfw_paysystems_allow_sites}"  2>&1)
+        fi
+
+	/sbin/ipfw table ${ipfw_paysystems_table_name} info > /dev/null 2>&1
+
+	if [ $? -eq 0 ]; then
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "FLUSH TABLE ${ipfw_paysystems_table_name}"
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"	
+
+		/sbin/ipfw table ${ipfw_paysystems_table_name} flush
+	else
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "CREATE TABLE ${ipfw_paysystems_table_name}"
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"	
+
+		/sbin/ipfw table ${ipfw_paysystems_table_name} create
+	fi
+
+	for domen in ${ipfw_paysystems_allow_sites}; do
+		if [ "$domen" = "${domen%#*}" -a "$domen" ]; then
+			[ -n "${ipfw_paysystems_log_file}" ] &&  echo "For ${domen} add next ip:" >> "${ipfw_paysystems_log_file}"
+			/usr/bin/drill ${domen} |/usr/bin/grep -v ";" |/usr/bin/grep  "IN[[:space:]]A" |/usr/bin/awk '{print $5}' | /usr/bin/xargs -L1 /sbin/ipfw table ${ipfw_paysystems_table_name} add 
+		fi
+	done
+
+}
+
+ipfw_paysystems_restart()
+{
+	ipfw_paysystems_stop
+	ipfw_paysystems_start
+}
+
+ipfw_paysystems_stop()
+{
+	/sbin/ipfw table ${ipfw_paysystems_table_name} info > /dev/null 2>&1
+
+	if [ $? -eq 0 ]; then
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "DESTROY TABLE ${ipfw_paysystems_table_name}"
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		/sbin/ipfw table ${ipfw_paysystems_table_name} destroy
+	fi
+
+        if [ -f "${pidfile}" ]; then
+                pids=$( pgrep -F ${pidfile} 2>&1 )
+                _err=$?
+                if [ ${_err} -eq  0 ]; then
+                        kill -9 ${pids} && /bin/rm -f ${pidfile}
+                else
+                        echo "pgrep: ${pids}"
+                        return ${_err}
+                fi
+        fi
+
+}
+
+run_rc_command "$1"
