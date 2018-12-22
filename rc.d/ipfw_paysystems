@@ -39,9 +39,10 @@ extra_commands="mainstart"
 : ${ipfw_paysystems_log_file:=""}
 
 pidfile=/var/run/$name.pid
-dir_script_path="$(realpath)"
-script_name="$(basename "$0")"
-procname="${dir_script_path}/${script_name}"
+#dir_script_path="$(realpath)"
+#script_name="$(basename "$0")"
+#procname="${dir_script_path}/${script_name}"
+procname="/usr/local/etc/rc.d/ipfw_paysystems"
 
 ipfw_paysystems_start()
 {
