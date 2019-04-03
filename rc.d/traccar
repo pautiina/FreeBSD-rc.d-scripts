@@ -25,7 +25,7 @@ load_rc_config "$name"
 : ${traccar_stdlog:="/dev/null"}
 : ${traccar_javaflags:="-Djava.awt.headless=true -Xmx1024M"}
 
-required_files="conf/traccar.xml"
+required_files="${traccar_chdir}/conf/traccar.xml"
 pidfile="/var/run/traccar/${name}.pid"
 procname="${traccar_java}"
 command="/usr/sbin/daemon"
