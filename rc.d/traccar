@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+
+# PROVIDE: traccar
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+
+# Add the following lines to /etc/rc.conf to enable `traccar':
+#
+# traccar_enable="YES"
+#
+
+. /etc/rc.subr
+
+name="traccar"
+rcvar="traccar_enable"
+
+# read configuration and set defaults
+load_rc_config "$name"
+: ${traccar_enable:="NO"}
+: ${traccar_chdir:="/usr/local/traccar"}                  # standard root
+: ${traccar_java:="/usr/local/openjdk8/bin/java"}         # path to your JRE
+: ${traccar_user:="traccar"}                              # user to run as
+: ${traccar_group:="traccar"}                             # group to run as
+: ${traccar_stdlog:="/dev/null"}
+: ${traccar_javaflags:="-Djava.awt.headless=true -Xmx1024M"}
+
+required_files="conf/traccar.xml"
+pidfile="/var/run/traccar/${name}.pid"
+procname="${traccar_java}"
+command="/usr/sbin/daemon"
+command_args="-f -p ${pidfile} -m 3 -o ${traccar_stdlog} ${traccar_java} -jar ${traccar_javaflags} tracker-server.jar conf/traccar.xml"
+start_precmd=start_precmd
+stop_precmd=stop_precmd
+stop_postcmd=stop_postcmd
+
+start_precmd()
+{
+        if [ ! -e /var/run/traccar ] ; then
+                install -d -o ${traccar_user} -g ${traccar_group} /var/run/traccar;
+        fi
+}
+
+stop_precmd()
+{
+        if [ -r ${pidfile} ]; then
+                _TRACCARPID=$(check_pidfile ${pidfile} ${procname})
+                export _TRACCAR_CHILDREN=$(pgrep -P ${_TRACCARPID})
+        fi
+}
+
+stop_postcmd()
+{
+        if ! [ -z ${_TRACCAR_CHILDREN} ]; then
+                echo "Cleaning up leftover child processes."
+                kill $sig_stop ${_TRACCAR_CHILDREN}
+                wait_for_pids ${_TRACCAR_CHILDREN}
+        fi
+}
+
+run_rc_command "$1"
