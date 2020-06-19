@@ -39,7 +39,7 @@ extra_commands="mainstart"
 
 # Set defaults
 : ${ipfw_paysystems_enable:="NO"}
-: ${ipfw_paysystems_allow_sites:="www.liqpay.com liqpay.com static.liqpay.com ecommerce.liqpay.com fonts.googleapis.com ajax.googleapis.com themes.googleusercontent.com www.google-analytics.com google-analytics.com ssl.google-analytics.com widget.siteheart.com client.siteheart.com clients.siteheart.com static.siteheart.com seal.globessl.com globessl.com privat24.ua www.privat24.ua privat24.privatbank.ua privatbank.ua qrapi.privatbank.ua www.privat24.ua api.privatbank.ua stats.g.doubleclick.net www.googleadservices.com fonts.gstatic.com socauth.privatbank.ua"}
+: ${ipfw_paysystems_allow_sites:="www.liqpay.ua liqpay.ua static.liqpay.ua ecommerce.liqpay.ua fonts.googleapis.com ajax.googleapis.com themes.googleusercontent.com www.google-analytics.com google-analytics.com ssl.google-analytics.com widget.siteheart.com client.siteheart.com clients.siteheart.com static.siteheart.com seal.globessl.com globessl.com privat24.ua www.privat24.ua privat24.privatbank.ua privatbank.ua qrapi.privatbank.ua www.privat24.ua api.privatbank.ua stats.g.doubleclick.net www.googleadservices.com fonts.gstatic.com socauth.privatbank.ua"}
 : ${ipfw_paysystems_table_name:="PAYSYSTEMS"}
 : ${ipfw_paysystems_run_time:="01:26"}
 : ${ipfw_paysystems_log_file:=""}
