@@ -1,0 +1,25 @@
+--- server/dhcp.c.orig	2017-07-25 16:39:54.000000000 +0300
++++ server/dhcp.c	2017-09-13 00:26:29.330284000 +0300
+@@ -31,6 +31,7 @@
+ #include <limits.h>
+ #include <sys/time.h>
+ 
++extern int flag_dd_option;
+ static void maybe_return_agent_options(struct packet *packet,
+ 				       struct option_state *options);
+ static int reuse_lease (struct packet* packet, struct lease* new_lease,
+@@ -4900,8 +4901,13 @@
+ 		{
+ 			if (LEASE_NOT_EMPTY(pool->free))
+ 				candl = LEASE_GET_FIRST(pool->free);
+-			else
++			else if (LEASE_NOT_EMPTY(pool->abandoned))
+ 				candl = LEASE_GET_FIRST(pool->abandoned);
++			else if (flag_dd_option)
++			{
++				candl = LEASE_GET_FIRST(pool->active);
++				candl -> ends = cur_time;
++			}
+ 		}
+ 
+ 		/*
