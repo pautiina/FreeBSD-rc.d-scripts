@@ -504,44 +504,74 @@ class CLineGraphDraw extends CGraphDraw {
 
 		$maxX = $this->sizeX;
 
-		// for each metric
-		for ($i = 0; $i < $this->num; $i++) {
-			if (!array_key_exists($this->items[$i]['itemid'], $this->data)) {
-				continue;
-			}
+		if (count($this->items) == 2) {
+			// Выбираем все значения итемов
+			$itemsIds = array_column($this->items, 'itemid');
+			$sqlWereItems = implode(' OR itemid = ', $itemsIds);
+			$sql = 'SELECT MAX(value) as vmax,DATE_FORMAT(FROM_UNIXTIME(clock),"%Y-%m-%d %H:%i") as DT 
+					FROM history_uint 
+					WHERE ( itemid = ' . $sqlWereItems . ' )
+					 AND clock >= '. zbx_dbstr($this->from_time) .
+					' AND clock <= '. zbx_dbstr($this->to_time) .
+					' GROUP BY DT
+					'
+			;
 
-			$data = &$this->data[$this->items[$i]['itemid']];
+			$sql_result = DBselect($sql);
+			$cactiPercentile = DBfetchColumn($sql_result, 'vmax');
+			rsort($cactiPercentile);
+			// Считаем, сколько 5-митутных данных должно быть в указанном промежутке
+			$cactiPercentileCount = (int) floor(($this->to_time - $this->from_time)/300); 
+			$percent = (int) floor((100 - $this->percentile[GRAPH_YAXIS_SIDE_LEFT]['percent']) / 100 * $cactiPercentileCount);
+			$this->percentile[GRAPH_YAXIS_SIDE_LEFT]['value'] = $cactiPercentile[$percent + 1];
 
-			// for each X
-			for ($j = 0; $j < $maxX; $j++) { // new point
-				if ($data['count'][$j] == 0) {
+/*
+$filename = dirname(__FILE__). '/log-post.txt';
+$dh = fopen ($filename,'a+');
+fwrite($dh, var_export($cactiPercentile,true));
+fwrite($dh, PHP_EOL);
+fclose($dh); 
+*/
+		} else {
+			// for each metric
+			for ($i = 0; $i < $this->num; $i++) {
+				if (!array_key_exists($this->items[$i]['itemid'], $this->data)) {
 					continue;
 				}
 
-				switch ($this->items[$i]['calc_fnc']) {
-					case CALC_FNC_MAX:
-						$value = $data['max'][$j];
-						break;
-					case CALC_FNC_MIN:
-						$value = $data['min'][$j];
-						break;
-					case CALC_FNC_ALL:
-					case CALC_FNC_AVG:
-					default:
-						$value = $data['avg'][$j];
+				$data = &$this->data[$this->items[$i]['itemid']];
+
+				// for each X
+				for ($j = 0; $j < $maxX; $j++) { // new point
+					if ($data['count'][$j] == 0) {
+						continue;
+					}
+
+					switch ($this->items[$i]['calc_fnc']) {
+						case CALC_FNC_MAX:
+							$value = $data['max'][$j];
+							break;
+						case CALC_FNC_MIN:
+							$value = $data['min'][$j];
+							break;
+						case CALC_FNC_ALL:
+						case CALC_FNC_AVG:
+						default:
+							$value = $data['avg'][$j];
+					}
+
+					$values[$this->items[$i]['yaxisside']][] = $value;
 				}
-
-				$values[$this->items[$i]['yaxisside']][] = $value;
 			}
-		}
 
-		foreach ($this->percentile as $side => $percentile) {
-			if ($percentile['percent'] > 0 && $values[$side]) {
-				sort($values[$side]);
+			foreach ($this->percentile as $side => $percentile) {
+				if ($percentile['percent'] > 0 && $values[$side]) {
+					sort($values[$side]);
 
-				// Using "Nearest Rank" method.
-				$percent = (int) ceil($percentile['percent'] / 100 * count($values[$side]));
-				$this->percentile[$side]['value'] = $values[$side][$percent - 1];
+					// Using "Nearest Rank" method.
+					$percent = (int) ceil($percentile['percent'] / 100 * count($values[$side]));
+					$this->percentile[$side]['value'] = $values[$side][$percent - 1];
+				}
 			}
 		}
 	}
