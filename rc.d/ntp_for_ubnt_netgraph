@@ -1,0 +1,22 @@
+#!/bin/sh
+# ####################################################################################
+# TUNNING NTP-SERVER FOR AP-UBNT
+ipfw add 1020 allow ip from me 123 to 192.168.70.64/26 out xmit vlan904
+ipfw add 1021 netgraph 33 ip from me 123 to 192.168.70.0/26 out xmit vlan905
+ipfq add 1022 netgraph 66 ip from me 123 to 192.168.70.128/26 out xmit vlan906
+####################################################################################
+
+/usr/sbin/ngctl -f- <<-SEQ
+mkpeer ipfw: patch 33 in
+name ipfw:33 time_plus_33
+msg time_plus_33: setconfig { count=2 csum_flags=1 ops=[   \
+{ mode=2 value=0x00000000547AE148 length=8 offset=60 }  \
+{ mode=2 value=0x00000000547AE148 length=8 offset=68 } ] }
+
+mkpeer ipfw: patch 66 in
+name ipfw:66 time_plus_66
+msg time_plus_66: setconfig { count=2 csum_flags=1 ops=[   \
+{ mode=2 value=0x00000000A8F5C28F length=8 offset=60 }  \
+{ mode=2 value=0x00000000A8F5C28F length=8 offset=68 } ] }
+
+SEQ
