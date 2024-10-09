@@ -891,7 +891,6 @@ foreach ($this->fullAdress as $io => $addressArr) {
             $apt = str_replace('.', '', $tempAddress[1]);
             if (is_numeric($apt)) {
                 $user_arr[$addressArr['user']]['aptnum'];
-
             }
 
         } else {
@@ -910,7 +909,8 @@ foreach ($this->fullAdress as $io => $addressArr) {
             $i++;
         }
 
-            $streetDataTemp[$addressArr['laneid']][$streetName][$houseID] = implode(';', $addressArr);
+            // $streetDataTemp[$addressArr['laneid']][$streetName][$houseID] = implode(';', $addressArr);
+            $streetDataTemp[$addressArr['laneid']][$streetName][$houseID] = $addressArr['user'];
 
 
     }
@@ -956,6 +956,7 @@ foreach ($this->fullAdress as $io => $addressArr) {
                     $this->housesData[$j]['laneid'] = $i;
                     $this->housesData[$j]['house'] = $build;
                     $this->housesData[$j]['houseid'] = $j;
+                    $user_arr[$raw]['buildid'] = $j;
                     $j++;
                 }
                 $i++;
@@ -1030,7 +1031,7 @@ foreach ($this->fullAdress as $io => $addressArr) {
         }
         fpc_end($this->beggar['DUMP'], "apt");
         
-
+debArr($user_arr);
         $i = $this->initIncrement();
         fpc_start($this->beggar['DUMP'], "address");
         foreach ($user_arr as $each_user => $io) {
