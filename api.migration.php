@@ -418,12 +418,13 @@ $this->beggar['DAT']['address']= 'address';
         //$users = 'SELECT * FROM `users` GROUP BY local_ip;';
         $users = 'SELECT * FROM `users`';
         $tariffs = 'SELECT * FROM `packets`';
-        $freezed = 'SELECT * FROM `usersfreeze`';
+        $freezed = 'SELECT * FROM `usersdel`';
         $blocked = 'SELECT * FROM `usersblok`';
         $city = "SELECT * FROM `lanes_settlements`";
         $street = "SELECT * FROM `lanes`";
         $houses = "SELECT * FROM `lanes_houses`";
         $fullAdress = "SELECT user,prim,houseid,lanes.* FROM `users` LEFT JOIN `lanes_houses` USING (houseid) LEFT JOIN `lanes` USING (laneid) WHERE houseid !=0";
+        $fullAdressDell = "SELECT user,prim,houseid,lanes.* FROM `usersdel` LEFT JOIN `lanes_houses` USING (houseid) LEFT JOIN `lanes` USING (laneid) WHERE houseid !=0";
         $nets = "(SELECT DISTINCT SUBSTRING_INDEX(`local_ip`,'.',3) AS `net` FROM `users`) UNION (SELECT DISTINCT SUBSTRING_INDEX(`framed_ip`,'.',3) AS `net` FROM `users`)";
 
 //sql data
@@ -436,6 +437,7 @@ $this->beggar['DAT']['address']= 'address';
         $this->housesData = $this->dbLoader->simple_queryall($houses);
         $this->netsData = $this->dbLoader->simple_queryall($nets);
         $this->fullAdress = $this->dbLoader->simple_queryall($fullAdress);
+        $this->fullAdressDell = $this->dbLoader->simple_queryall($fullAdressDell);
         $this->dbLoader->close($db_link);
 
         if (!($db_config = @parse_ini_file('config/' . 'mysql.ini'))) {
@@ -514,23 +516,25 @@ $ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
             $user_arr[$this->fixedLogin]['floor'] = $io['floor'];
             $user_arr[$this->fixedLogin]['freeze'] = 0;
             $user_arr[$this->fixedLogin]['uid'] = $io['uid'];
-            $allIP[$eachIp] = $this->fixedLogin;
+            $allIP[$ip] = $this->fixedLogin;
         }
 //debArr($this->tariffsData);
-//debArr($user_arr);
         foreach ($this->blockedData as $eachuser => $io) {
-            $this->stringToFix = $io[$this->beggar['DAT']['login']];
+            $this->loginToFix = $io[$this->beggar['DAT']['login']];
             $this->fixLogin();
             if ($io['real_ip']) {
                 $eachIp = $io['framed_ip'];
             } else {
                 $eachIp = $io['local_ip'];
             }
-            if (!isset($allIP[$eachIp])) {
+$ipArr = str_split($this->fixedLogin, 3);
+$ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
+
+            if (!isset($allIP[$ip])) {
                 $user_arr[$this->fixedLogin][$this->loginPoint] = $this->fixedLogin; //0
                 $user_arr[$this->fixedLogin][$this->passwordPoint] = $io[$this->beggar['DAT']['password']]; //1
                 $user_arr[$this->fixedLogin][$this->gridPoint] = $io[$this->beggar['DAT']['grid']];  //2
-                $user_arr[$this->fixedLogin][$this->ipPoint] = $eachIp; //3
+                $user_arr[$this->fixedLogin][$this->ipPoint] = $ip; //3
                 $user_arr[$this->fixedLogin][$this->macPoint] = $io[$this->beggar['DAT']['mac']]; //4
                 $user_arr[$this->fixedLogin][$this->cashPoint] = $io[$this->beggar['DAT']['cash']]; //5
                 $user_arr[$this->fixedLogin][$this->downPoint] = 1; //6
@@ -553,14 +557,14 @@ $ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
                 $user_arr[$this->fixedLogin]['floor'] = $io['floor'];
                 $user_arr[$this->fixedLogin]['freeze'] = 1;
                 $user_arr[$this->fixedLogin]['uid'] = $io['uid'];
-                $allIP[$eachIp] = $this->fixedLogin;
+                $allIP[$ip] = $this->fixedLogin;
             } else {
-                $duplicateIP[$this->fixedLogin] = $allIP[$eachIp];
+                $duplicateIP[$this->fixedLogin] = $allIP[$ip];
             }
         }
-
+//debArr($allIP);
         foreach ($this->freezedData as $eachuser => $io) {
-            $this->stringToFix = $io[$this->beggar['DAT']['login']];
+            $this->loginToFix = $io[$this->beggar['DAT']['login']];
             $this->fixLogin();
             if ($io['real_ip']) {
                 $eachIp = $io['framed_ip'];
@@ -568,11 +572,13 @@ $ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
                 $eachIp = $io['local_ip'];
             }
 
-            if (!isset($allIP[$eachIp])) {
+$ipArr = str_split($this->fixedLogin, 3);
+$ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
+            if (!isset($allIP[$ip])) {
                 $user_arr[$this->fixedLogin][$this->loginPoint] = $this->fixedLogin; //0
                 $user_arr[$this->fixedLogin][$this->passwordPoint] = $io[$this->beggar['DAT']['password']]; //1
                 $user_arr[$this->fixedLogin][$this->gridPoint] = $io[$this->beggar['DAT']['grid']];  //2
-                $user_arr[$this->fixedLogin][$this->ipPoint] = $eachIp; //3
+                $user_arr[$this->fixedLogin][$this->ipPoint] = $ip; //3
                 $user_arr[$this->fixedLogin][$this->macPoint] = $io[$this->beggar['DAT']['mac']]; //4
                 $user_arr[$this->fixedLogin][$this->cashPoint] = $io[$this->beggar['DAT']['cash']]; //5
                 $user_arr[$this->fixedLogin][$this->downPoint] = $io[$this->beggar['DAT']['down']]; //6
@@ -595,9 +601,9 @@ $ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
                 $user_arr[$this->fixedLogin]['floor'] = $io['floor'];
                 $user_arr[$this->fixedLogin]['freeze'] = 1;
                 $user_arr[$this->fixedLogin]['uid'] = $io['uid'];
-                $allIP[$eachIp] = $this->fixedLogin;
+                $allIP[$ip] = $this->fixedLogin;
             } else {
-                $duplicateIP[$this->fixedLogin] = $allIP[$eachIp];
+                $duplicateIP[$this->fixedLogin] = $allIP[$ip];
             }
         }
 
@@ -864,6 +870,11 @@ $ip = '10.10.' . ltrim($ipArr[0], '0') . '.' . ltrim($ipArr[1], '0');
         fpc_end($this->beggar['DUMP'], "notes");
 
 //debArr($this->fullAdress);
+//debArr($this->fullAdressDell);
+
+
+$this->fullAdress = array_merge($this->fullAdress, $this->fullAdressDell);
+
 $this->cityData = array();
 $streetDataTemp = array();
 $badAdress = array();
