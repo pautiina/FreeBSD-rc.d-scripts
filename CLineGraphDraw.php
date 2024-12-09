@@ -1,7 +1,7 @@
 <?php
 /*
 ** Zabbix
-** Copyright (C) 2001-2023 Zabbix SIA
+** Copyright (C) 2001-2024 Zabbix SIA
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -239,14 +239,18 @@ class CLineGraphDraw extends CGraphDraw {
 
 			// Override item history setting with housekeeping settings, if they are enabled in config.
 			if (CHousekeepingHelper::get(CHousekeepingHelper::HK_HISTORY_GLOBAL)) {
-				$item['history'] = timeUnitToSeconds(CHousekeepingHelper::get(CHousekeepingHelper::HK_HISTORY));
+				if ($item['history'] != 0) {
+					$item['history'] = timeUnitToSeconds(CHousekeepingHelper::get(CHousekeepingHelper::HK_HISTORY));
+				}
 			}
 			else {
 				$to_resolve[] = 'history';
 			}
 
 			if (CHousekeepingHelper::get(CHousekeepingHelper::HK_TRENDS_GLOBAL)) {
-				$item['trends'] = timeUnitToSeconds(CHousekeepingHelper::get(CHousekeepingHelper::HK_TRENDS));
+				if ($item['trends'] != 0) {
+					$item['trends'] = timeUnitToSeconds(CHousekeepingHelper::get(CHousekeepingHelper::HK_TRENDS));
+				}
 			}
 			else {
 				$to_resolve[] = 'trends';
@@ -496,78 +500,77 @@ class CLineGraphDraw extends CGraphDraw {
 		if ($this->type != GRAPH_TYPE_NORMAL) {
 			return;
 		}
-
+		
 		$values = [
 			GRAPH_YAXIS_SIDE_LEFT => [],
 			GRAPH_YAXIS_SIDE_RIGHT => []
 		];
-
+		
 		$maxX = $this->sizeX;
-
+		
 		if (count($this->items) == 2) {
 			// Выбираем все значения итемов
 			$itemsIds = array_column($this->items, 'itemid');
 			$sqlWereItems = implode(' OR itemid = ', $itemsIds);
-			$sql = 'SELECT MAX(value) as vmax,DATE_FORMAT(FROM_UNIXTIME(clock),"%Y-%m-%d %H:%i") as DT 
-					FROM history_uint 
-					WHERE ( itemid = ' . $sqlWereItems . ' )
-					 AND clock >= '. zbx_dbstr($this->from_time) .
-					' AND clock <= '. zbx_dbstr($this->to_time) .
-					' GROUP BY DT
-					'
+			$sql = 'SELECT MAX(value) as vmax,DATE_FORMAT(FROM_UNIXTIME(clock),"%Y-%m-%d %H:%i") as DT
+			FROM history_uint
+			WHERE ( itemid = ' . $sqlWereItems . ' )
+			AND clock >= '. zbx_dbstr($this->from_time) .
+			' AND clock <= '. zbx_dbstr($this->to_time) .
+			' GROUP BY DT
+			'
 			;
-
+			
 			$sql_result = DBselect($sql);
 			$cactiPercentile = DBfetchColumn($sql_result, 'vmax');
 			rsort($cactiPercentile);
 			// Считаем, сколько 5-митутных данных должно быть в указанном промежутке
-			$cactiPercentileCount = (int) floor(($this->to_time - $this->from_time)/300); 
+			$cactiPercentileCount = (int) floor(($this->to_time - $this->from_time)/300);
 			$percent = (int) floor((100 - $this->percentile[GRAPH_YAXIS_SIDE_LEFT]['percent']) / 100 * $cactiPercentileCount);
 			$this->percentile[GRAPH_YAXIS_SIDE_LEFT]['value'] = $cactiPercentile[$percent + 1];
-
-/*
-$filename = dirname(__FILE__). '/log-post.txt';
-$dh = fopen ($filename,'a+');
-fwrite($dh, var_export($cactiPercentile,true));
-fwrite($dh, PHP_EOL);
-fclose($dh); 
-*/
+			
+			/*
+			$filename = dirname(__FILE__). '/log-post.txt';
+			$dh = fopen ($filename,'a+');
+			fwrite($dh, var_export($cactiPercentile,true));
+			fwrite($dh, PHP_EOL);
+			fclose($dh);
+			*/
 		} else {
 			// for each metric
 			for ($i = 0; $i < $this->num; $i++) {
 				if (!array_key_exists($this->items[$i]['itemid'], $this->data)) {
 					continue;
 				}
-
+				
 				$data = &$this->data[$this->items[$i]['itemid']];
-
+				
 				// for each X
 				for ($j = 0; $j < $maxX; $j++) { // new point
 					if ($data['count'][$j] == 0) {
 						continue;
 					}
 
-					switch ($this->items[$i]['calc_fnc']) {
-						case CALC_FNC_MAX:
-							$value = $data['max'][$j];
-							break;
-						case CALC_FNC_MIN:
-							$value = $data['min'][$j];
-							break;
-						case CALC_FNC_ALL:
-						case CALC_FNC_AVG:
-						default:
-							$value = $data['avg'][$j];
-					}
-
-					$values[$this->items[$i]['yaxisside']][] = $value;
+				switch ($this->items[$i]['calc_fnc']) {
+					case CALC_FNC_MAX:
+					$value = $data['max'][$j];
+					break;
+					case CALC_FNC_MIN:
+					$value = $data['min'][$j];
+					break;
+					case CALC_FNC_ALL:
+					case CALC_FNC_AVG:
+					default:
+					$value = $data['avg'][$j];
+				}
+				$values[$this->items[$i]['yaxisside']][] = $value;
 				}
 			}
 
 			foreach ($this->percentile as $side => $percentile) {
 				if ($percentile['percent'] > 0 && $values[$side]) {
 					sort($values[$side]);
-
+					
 					// Using "Nearest Rank" method.
 					$percent = (int) ceil($percentile['percent'] / 100 * count($values[$side]));
 					$this->percentile[$side]['value'] = $values[$side][$percent - 1];
@@ -1343,33 +1346,30 @@ fclose($dh);
 		}
 
 		foreach ($this->percentile as $side => $percentile) {
-			if ($percentile['percent'] > 0 && $percentile['value']) {
-				$minY = $this->m_minY[$side];
-				$maxY = $this->m_maxY[$side];
+			if ($percentile['percent'] > 0 && $percentile['value'] != 0) {
+				$min_y = $this->m_minY[$side];
+				$max_y = $this->m_maxY[$side];
 
-				$color = ($side == GRAPH_YAXIS_SIDE_LEFT)
-					? $this->graphtheme['leftpercentilecolor']
-					: $this->graphtheme['rightpercentilecolor'];
+				if ($percentile['value'] >= $min_y && $percentile['value'] <= $max_y) {
+					$color = ($side == GRAPH_YAXIS_SIDE_LEFT)
+						? $this->graphtheme['leftpercentilecolor']
+						: $this->graphtheme['rightpercentilecolor'];
 
-				if ($maxY - $minY == INF) {
-					$y = $this->sizeY + $this->shiftY - CMathHelper::safeMul([$this->sizeY,
-						$percentile['value'] / 10 - $minY / 10, 1 / ($maxY / 10 - $minY / 10)]
+					if ($max_y - $min_y == INF) {
+						$y = $this->sizeY + $this->shiftY - CMathHelper::safeMul([$this->sizeY,
+							$percentile['value'] / 10 - $min_y / 10, 1 / ($max_y / 10 - $min_y / 10)]
+						);
+					}
+					else {
+						$y = $this->sizeY + $this->shiftY - CMathHelper::safeMul([$this->sizeY,
+							$percentile['value'] - $min_y, 1 / ($max_y - $min_y)]
+						);
+					}
+
+					zbx_imageline($this->im, $this->shiftXleft, $y, $this->sizeX + $this->shiftXleft, $y,
+						$this->getColor($color)
 					);
 				}
-				else {
-					$y = $this->sizeY + $this->shiftY - CMathHelper::safeMul([$this->sizeY,
-						$percentile['value'] - $minY, 1 / ($maxY - $minY)]
-					);
-				}
-
-				zbx_imageline(
-					$this->im,
-					$this->shiftXleft,
-					$y,
-					$this->sizeX + $this->shiftXleft,
-					$y,
-					$this->getColor($color)
-				);
 			}
 		}
 	}
