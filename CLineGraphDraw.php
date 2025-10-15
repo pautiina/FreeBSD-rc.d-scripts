@@ -525,17 +525,27 @@ class CLineGraphDraw extends CGraphDraw {
 			$cactiPercentile = DBfetchColumn($sql_result, 'vmax');
 			rsort($cactiPercentile);
 			// Считаем, сколько 5-митутных данных должно быть в указанном промежутке
-			$cactiPercentileCount = (int) floor(($this->to_time - $this->from_time)/300);
+			//$cactiPercentileCount = (int) floor(($this->to_time - $this->from_time)/300);
+			$delays = array_column($this->items, 'delay');
+			if ($delays['0'] != $delays['1']) {
+				return;
+			} else {
+				$delay = $delays['0'];
+			}
+			$cactiPercentileCount = (int) floor(($this->to_time - $this->from_time)/$delay);
 			$percent = (int) floor((100 - $this->percentile[GRAPH_YAXIS_SIDE_LEFT]['percent']) / 100 * $cactiPercentileCount);
 			$this->percentile[GRAPH_YAXIS_SIDE_LEFT]['value'] = $cactiPercentile[$percent + 1];
 			
 			/*
 			$filename = dirname(__FILE__). '/log-post.txt';
 			$dh = fopen ($filename,'a+');
-			fwrite($dh, var_export($cactiPercentile,true));
+			//fwrite($dh, var_export($cactiPercentile,true));
+			fwrite($dh, var_export($itemsIds,true));
+			fwrite($dh, var_export($this->items,true));
 			fwrite($dh, PHP_EOL);
 			fclose($dh);
 			*/
+			
 		} else {
 			// for each metric
 			for ($i = 0; $i < $this->num; $i++) {
@@ -550,23 +560,22 @@ class CLineGraphDraw extends CGraphDraw {
 					if ($data['count'][$j] == 0) {
 						continue;
 					}
-
-				switch ($this->items[$i]['calc_fnc']) {
-					case CALC_FNC_MAX:
-					$value = $data['max'][$j];
-					break;
-					case CALC_FNC_MIN:
-					$value = $data['min'][$j];
-					break;
-					case CALC_FNC_ALL:
-					case CALC_FNC_AVG:
-					default:
-					$value = $data['avg'][$j];
-				}
-				$values[$this->items[$i]['yaxisside']][] = $value;
+					switch ($this->items[$i]['calc_fnc']) {
+						case CALC_FNC_MAX:
+						$value = $data['max'][$j];
+						break;
+						case CALC_FNC_MIN:
+						$value = $data['min'][$j];
+						break;
+						case CALC_FNC_ALL:
+						case CALC_FNC_AVG:
+						default:
+						$value = $data['avg'][$j];
+					}
+						$values[$this->items[$i]['yaxisside']][] = $value;
 				}
 			}
-
+		
 			foreach ($this->percentile as $side => $percentile) {
 				if ($percentile['percent'] > 0 && $values[$side]) {
 					sort($values[$side]);
