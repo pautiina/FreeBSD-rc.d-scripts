@@ -1,0 +1,2859 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: fnm-asn-inspector
+  namespace: default
+  uid: 9415b50d-344e-481d-a1c4-20a364f42848
+  resourceVersion: '1790787064635989'
+  generation: 2
+  creationTimestamp: '2026-09-30T16:39:21Z'
+  labels:
+    grafana.app/deprecatedInternalID: '2155684667203584'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T16:51:04Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            limit: 100
+            matchAny: false
+            tags: []
+            type: dashboard
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            builderOptions:
+              database: fastnetmon
+              fields:
+                - title
+                - text
+                - eventDateTime
+              filters:
+                - condition: AND
+                  filterType: custom
+                  key: eventDateTime
+                  operator: WITH IN DASHBOARD TIME RANGE
+                  restrictToFields:
+                    - label: eventDateTime
+                      name: eventDateTime
+                      picklistValues: []
+                      type: DateTime
+                  type: datetime
+              limit: 100
+              mode: list
+              orderBy: []
+              table: attack_events
+            queryType: builder
+            rawSql: >-
+              SELECT "title", "text", "eventDateTime" FROM
+              "fastnetmon"."attack_events" WHERE   ( eventDateTime  >=
+              $__fromTime AND eventDateTime <= $__toTime ) LIMIT 100
+            refId: Anno
+        enable: false
+        hide: false
+        iconColor: red
+        name: FastNetMon attacks
+        mappings:
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: eventDateTime
+          title:
+            source: field
+            value: title
+  cursorSync: 'Off'
+  description: >-
+    ASN traffic inspector based on FastNetMon traffic persistence. TO ASN =
+    dstAsn equals selected ASN; FROM ASN = srcAsn equals selected ASN. For your
+    own ASN this corresponds to inbound and outbound traffic respectively.
+    Bandwidth and packets are reconstructed with sampleRatio. Sampled
+    flow-record panels are not exact FastNetMon flows/s counters.
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: IN / TO ASN bandwidth
+        description: >-
+          30-second average ending at dashboard To time. IN means traffic whose
+          destination ASN is the selected ASN. Sampling is restored with
+          sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT sum(length * sampleRatio * 8) / 30.0 AS value
+                        FROM fastnetmon.traffic WHERE packetDate >=
+                        toDate($__toTime - INTERVAL 30 SECOND) AND packetDate <=
+                        toDate($__toTime) AND packetDateTime > $__toTime -
+                        INTERVAL 30 SECOND AND packetDateTime <= $__toTime AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-10:
+      kind: Panel
+      spec:
+        id: 10
+        title: Packet rate — TO ASN / FROM ASN
+        description: Packet rate reconstructed from sampled traffic.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               sumIf(numberOfPackets * sampleRatio, dstAsn = $asn) / step AS `To ASN`,
+                               sumIf(numberOfPackets * sampleRatio, srcAsn = $asn) / step AS `From ASN`
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        (srcAsn = $asn OR dstAsn = $asn) AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-11:
+      kind: Panel
+      spec:
+        id: 11
+        title: Sampled flow records — TO ASN / FROM ASN
+        description: Sampled traffic DB records/s, not exact FastNetMon flows/s.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               countIf(dstAsn = $asn) / step AS `To ASN`,
+                               countIf(srcAsn = $asn) / step AS `From ASN`
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        (srcAsn = $asn OR dstAsn = $asn) AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-12:
+      kind: Panel
+      spec:
+        id: 12
+        title: Average packet size — TO ASN / FROM ASN
+        description: Average bytes per packet, reconstructed from sampled traffic.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               if(sumIf(numberOfPackets * sampleRatio, dstAsn = $asn) > 0, sumIf(length * sampleRatio, dstAsn = $asn) / sumIf(numberOfPackets * sampleRatio, dstAsn = $asn), 0) AS `To ASN`,
+                               if(sumIf(numberOfPackets * sampleRatio, srcAsn = $asn) > 0, sumIf(length * sampleRatio, srcAsn = $asn) / sumIf(numberOfPackets * sampleRatio, srcAsn = $asn), 0) AS `From ASN`
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        (srcAsn = $asn OR dstAsn = $asn) AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-13:
+      kind: Panel
+      spec:
+        id: 13
+        title: TO ASN protocol mix — bandwidth
+        description: >-
+          Protocol/vector mix for traffic to the selected ASN. TCP SYN and
+          fragments may overlap base protocol totals.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               sumIf(length * sampleRatio * 8, protocol = 6) / step AS TCP,
+                               sumIf(length * sampleRatio * 8, protocol = 17) / step AS UDP,
+                               sumIf(length * sampleRatio * 8, protocol IN (1,58)) / step AS ICMP,
+                               sumIf(length * sampleRatio * 8, ipFragmented != 0) / step AS Fragmented,
+                               sumIf(length * sampleRatio * 8, protocol = 6 AND bitAnd(flags, 2) != 0) / step AS TCP_SYN
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn = $asn
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-14:
+      kind: Panel
+      spec:
+        id: 14
+        title: TO ASN protocol mix — packets
+        description: Protocol/vector packet rate for traffic to the selected ASN.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               sumIf(numberOfPackets * sampleRatio, protocol = 6) / step AS TCP,
+                               sumIf(numberOfPackets * sampleRatio, protocol = 17) / step AS UDP,
+                               sumIf(numberOfPackets * sampleRatio, protocol IN (1,58)) / step AS ICMP,
+                               sumIf(numberOfPackets * sampleRatio, ipFragmented != 0) / step AS Fragmented,
+                               sumIf(numberOfPackets * sampleRatio, protocol = 6 AND bitAnd(flags, 2) != 0) / step AS TCP_SYN
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn = $asn
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-15:
+      kind: Panel
+      spec:
+        id: 15
+        title: FROM ASN protocol mix — bandwidth
+        description: >-
+          Protocol/vector mix for traffic from the selected ASN. TCP SYN and
+          fragments may overlap base protocol totals.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               sumIf(length * sampleRatio * 8, protocol = 6) / step AS TCP,
+                               sumIf(length * sampleRatio * 8, protocol = 17) / step AS UDP,
+                               sumIf(length * sampleRatio * 8, protocol IN (1,58)) / step AS ICMP,
+                               sumIf(length * sampleRatio * 8, ipFragmented != 0) / step AS Fragmented,
+                               sumIf(length * sampleRatio * 8, protocol = 6 AND bitAnd(flags, 2) != 0) / step AS TCP_SYN
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn = $asn
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-16:
+      kind: Panel
+      spec:
+        id: 16
+        title: FROM ASN protocol mix — packets
+        description: Protocol/vector packet rate for traffic from the selected ASN.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               sumIf(numberOfPackets * sampleRatio, protocol = 6) / step AS TCP,
+                               sumIf(numberOfPackets * sampleRatio, protocol = 17) / step AS UDP,
+                               sumIf(numberOfPackets * sampleRatio, protocol IN (1,58)) / step AS ICMP,
+                               sumIf(numberOfPackets * sampleRatio, ipFragmented != 0) / step AS Fragmented,
+                               sumIf(numberOfPackets * sampleRatio, protocol = 6 AND bitAnd(flags, 2) != 0) / step AS TCP_SYN
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn = $asn
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-17:
+      kind: Panel
+      spec:
+        id: 17
+        title: Top source ASNs → AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT
+                        concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',srcAsn,'Unknown'),'
+                        AS',toString(srcAsn)) AS `Source ASN`,
+                        sum(length*sampleRatio) AS `Estimated bytes`,
+                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                        count() AS `Sampled records` FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime) AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn=$asn GROUP BY srcAsn ORDER BY `Estimated bytes`
+                        DESC LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-18:
+      kind: Panel
+      spec:
+        id: 18
+        title: Top destination ASNs from AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT
+                        concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',dstAsn,'Unknown'),'
+                        AS',toString(dstAsn)) AS `Destination ASN`,
+                        sum(length*sampleRatio) AS `Estimated bytes`,
+                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                        count() AS `Sampled records` FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime) AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn=$asn GROUP BY dstAsn ORDER BY `Estimated bytes`
+                        DESC LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-19:
+      kind: Panel
+      spec:
+        id: 19
+        title: Top source IPs → AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT
+                        if(ipProtocolVersion=4,IPv4NumToString(srcIp),IPv6NumToString(srcIpv6))
+                        AS `Source IP`, srcAsn AS ASN, sum(length*sampleRatio)
+                        AS `Estimated bytes`, sum(numberOfPackets*sampleRatio)
+                        AS `Estimated packets`, count() AS `Sampled records`
+                        FROM fastnetmon.traffic WHERE
+                        $__timeFilter(packetDateTime) AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn=$asn GROUP BY `Source IP`,srcAsn ORDER BY
+                        `Estimated bytes` DESC LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: OUT / FROM ASN bandwidth
+        description: >-
+          30-second average ending at dashboard To time. OUT means traffic whose
+          source ASN is the selected ASN. Sampling is restored with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT sum(length * sampleRatio * 8) / 30.0 AS value
+                        FROM fastnetmon.traffic WHERE packetDate >=
+                        toDate($__toTime - INTERVAL 30 SECOND) AND packetDate <=
+                        toDate($__toTime) AND packetDateTime > $__toTime -
+                        INTERVAL 30 SECOND AND packetDateTime <= $__toTime AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-20:
+      kind: Panel
+      spec:
+        id: 20
+        title: Top destination IPs from AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT
+                        if(ipProtocolVersion=4,IPv4NumToString(dstIp),IPv6NumToString(dstIpv6))
+                        AS `Destination IP`, dstAsn AS ASN,
+                        sum(length*sampleRatio) AS `Estimated bytes`,
+                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                        count() AS `Sampled records` FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime) AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn=$asn GROUP BY `Destination IP`,dstAsn ORDER BY
+                        `Estimated bytes` DESC LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-21:
+      kind: Panel
+      spec:
+        id: 21
+        title: Destination ports → AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT destinationPort AS `Destination port`,
+                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
+                        AS Protocol, sum(length*sampleRatio) AS `Estimated
+                        bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated
+                        packets`, count() AS `Sampled records` FROM
+                        fastnetmon.traffic WHERE $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn=$asn GROUP BY destinationPort,Protocol ORDER BY
+                        `Estimated bytes` DESC LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-22:
+      kind: Panel
+      spec:
+        id: 22
+        title: Destination ports from AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT destinationPort AS `Destination port`,
+                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
+                        AS Protocol, sum(length*sampleRatio) AS `Estimated
+                        bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated
+                        packets`, count() AS `Sampled records` FROM
+                        fastnetmon.traffic WHERE $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn=$asn GROUP BY destinationPort,Protocol ORDER BY
+                        `Estimated bytes` DESC LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-23:
+      kind: Panel
+      spec:
+        id: 23
+        title: Ingress exporter / interface → AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT IPv4NumToString(agentIpAddress) AS Exporter,
+                        inputInterface AS `Input interface`,
+                        sum(length*sampleRatio) AS `Estimated bytes`,
+                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                        count() AS `Sampled records` FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime) AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn=$asn GROUP BY Exporter,`Input interface` ORDER BY
+                        `Estimated bytes` DESC LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-24:
+      kind: Panel
+      spec:
+        id: 24
+        title: Egress exporter / interface from AS$asn
+        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT IPv4NumToString(agentIpAddress) AS Exporter,
+                        outputInterface AS `Output interface`,
+                        sum(length*sampleRatio) AS `Estimated bytes`,
+                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                        count() AS `Sampled records` FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime) AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn=$asn GROUP BY Exporter,`Output interface` ORDER
+                        BY `Estimated bytes` DESC LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+    panel-25:
+      kind: Panel
+      spec:
+        id: 25
+        title: Raw sampled flows involving AS$asn
+        description: Raw sampled records; sampleRatio is shown explicitly.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT packetDateTime AS Time,
+                        if(ipProtocolVersion=4,IPv4NumToString(srcIp),IPv6NumToString(srcIpv6))
+                        AS `Source IP`,
+                        if(ipProtocolVersion=4,IPv4NumToString(dstIp),IPv6NumToString(dstIpv6))
+                        AS `Destination IP`, sourcePort AS `Source port`,
+                        destinationPort AS `Destination port`, numberOfPackets
+                        AS `Sampled packets`, length AS `Sampled bytes`,
+                        sampleRatio AS `Sample ratio`, srcAsn AS `Source ASN`,
+                        dstAsn AS `Destination ASN`,
+                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
+                        AS Protocol, IPv4NumToString(agentIpAddress) AS
+                        Exporter, inputInterface AS `Input interface`,
+                        outputInterface AS `Output interface`, flags AS `TCP
+                        flags raw`, ipFragmented AS Fragmented FROM
+                        fastnetmon.traffic WHERE $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        (srcAsn=$asn OR dstAsn=$asn) ORDER BY packetDateTime
+                        DESC LIMIT 1000
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides: []
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: IN / TO ASN packet rate
+        description: >-
+          30-second average packet rate for traffic to the selected ASN,
+          corrected by sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT sum(numberOfPackets * sampleRatio) / 30.0 AS
+                        value FROM fastnetmon.traffic WHERE packetDate >=
+                        toDate($__toTime - INTERVAL 30 SECOND) AND packetDate <=
+                        toDate($__toTime) AND packetDateTime > $__toTime -
+                        INTERVAL 30 SECOND AND packetDateTime <= $__toTime AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: OUT / FROM ASN packet rate
+        description: >-
+          30-second average packet rate for traffic from the selected ASN,
+          corrected by sampleRatio.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT sum(numberOfPackets * sampleRatio) / 30.0 AS
+                        value FROM fastnetmon.traffic WHERE packetDate >=
+                        toDate($__toTime - INTERVAL 30 SECOND) AND packetDate <=
+                        toDate($__toTime) AND packetDateTime > $__toTime -
+                        INTERVAL 30 SECOND AND packetDateTime <= $__toTime AND
+                        ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-5:
+      kind: Panel
+      spec:
+        id: 5
+        title: TO ASN sampled flow records/s
+        description: >-
+          Sampled traffic database records per second over the last 30 seconds.
+          This is NOT FastNetMon's exact flows/s counter.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT count() / 30.0 AS value FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__toTime - INTERVAL 30
+                        SECOND) AND packetDate <= toDate($__toTime) AND
+                        packetDateTime > $__toTime - INTERVAL 30 SECOND AND
+                        packetDateTime <= $__toTime AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-6:
+      kind: Panel
+      spec:
+        id: 6
+        title: FROM ASN sampled flow records/s
+        description: >-
+          Sampled traffic database records per second over the last 30 seconds.
+          This is NOT FastNetMon's exact flows/s counter.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT count() / 30.0 AS value FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__toTime - INTERVAL 30
+                        SECOND) AND packetDate <= toDate($__toTime) AND
+                        packetDateTime > $__toTime - INTERVAL 30 SECOND AND
+                        packetDateTime <= $__toTime AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-7:
+      kind: Panel
+      spec:
+        id: 7
+        title: Avg packet size TO ASN
+        description: >-
+          Average packet size over the last 30 seconds for traffic to the
+          selected ASN.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT if(sum(numberOfPackets * sampleRatio) > 0,
+                        sum(length * sampleRatio) / sum(numberOfPackets *
+                        sampleRatio), 0) AS value FROM fastnetmon.traffic WHERE
+                        packetDate >= toDate($__toTime - INTERVAL 30 SECOND) AND
+                        packetDate <= toDate($__toTime) AND packetDateTime >
+                        $__toTime - INTERVAL 30 SECOND AND packetDateTime <=
+                        $__toTime AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        dstAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-8:
+      kind: Panel
+      spec:
+        id: 8
+        title: Avg packet size FROM ASN
+        description: >-
+          Average packet size over the last 30 seconds for traffic from the
+          selected ASN.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        SELECT if(sum(numberOfPackets * sampleRatio) > 0,
+                        sum(length * sampleRatio) / sum(numberOfPackets *
+                        sampleRatio), 0) AS value FROM fastnetmon.traffic WHERE
+                        packetDate >= toDate($__toTime - INTERVAL 30 SECOND) AND
+                        packetDate <= toDate($__toTime) AND packetDateTime >
+                        $__toTime - INTERVAL 30 SECOND AND packetDateTime <=
+                        $__toTime AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        srcAsn = $asn AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-9:
+      kind: Panel
+      spec:
+        id: 9
+        title: Bandwidth — TO ASN / FROM ASN
+        description: >-
+          IN = dstAsn is selected ASN; OUT = srcAsn is selected ASN. Rates are
+          reconstructed from sampled traffic.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: sql
+                      rawSql: >-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+
+                        SELECT toDateTime(intDiv(toUInt32(packetDateTime), step)
+                        * step) AS time,
+                               sumIf(length * sampleRatio * 8, dstAsn = $asn) / step AS `To ASN`,
+                               sumIf(length * sampleRatio * 8, srcAsn = $asn) / step AS `From ASN`
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate($__fromTime) AND packetDate
+                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
+                        AND ipProtocolVersion =
+                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
+                        (srcAsn = $asn OR dstAsn = $asn) AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                        )
+
+                        GROUP BY time
+
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 6
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 18
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-4
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-5
+        - kind: GridLayoutItem
+          spec:
+            x: 6
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-6
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-7
+        - kind: GridLayoutItem
+          spec:
+            x: 18
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-8
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 10
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-9
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 10
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-10
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 21
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-11
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 21
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-12
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 32
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-13
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 32
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-14
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 43
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-15
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 43
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-16
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 54
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-17
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 54
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-18
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 64
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-19
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 64
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-20
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 74
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-21
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 74
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-22
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 84
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-23
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 84
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-24
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 94
+            width: 24
+            height: 13
+            element:
+              kind: ElementReference
+              name: panel-25
+  links: []
+  liveNow: false
+  preload: false
+  tags:
+    - FastNetMon
+    - ClickHouse
+  timeSettings:
+    from: now-15m
+    to: now
+    autoRefresh: 5s
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon — ASN Inspector
+  variables:
+    - kind: TextVariable
+      spec:
+        name: asn
+        current:
+          text: '62206'
+          value: '62206'
+        query: '62206'
+        label: ASN
+        hide: dontHide
+        skipUrlSync: false
+    - kind: CustomVariable
+      spec:
+        name: protocol_version
+        query: 'IPv4 : asn_metrics_ipv4, IPv6 : asn_metrics_ipv6'
+        current:
+          text: IPv4
+          value: asn_metrics_ipv4
+        options:
+          - selected: true
+            text: IPv4
+            value: asn_metrics_ipv4
+          - selected: false
+            text: IPv6
+            value: asn_metrics_ipv6
+        multi: false
+        includeAll: false
+        label: IP Version
+        hide: dontHide
+        skipUrlSync: false
+        description: Metrics table used for the selected ASN
+        allowCustomValue: false
+    - kind: CustomVariable
+      spec:
+        name: protocol
+        query: total,tcp,udp,icmp,fragmented,tcp_syn
+        current:
+          text: total
+          value: total
+        options:
+          - selected: true
+            text: total
+            value: total
+          - selected: false
+            text: tcp
+            value: tcp
+          - selected: false
+            text: udp
+            value: udp
+          - selected: false
+            text: icmp
+            value: icmp
+          - selected: false
+            text: fragmented
+            value: fragmented
+          - selected: false
+            text: tcp_syn
+            value: tcp_syn
+        multi: false
+        includeAll: false
+        label: Traffic type
+        hide: dontHide
+        skipUrlSync: false
+        description: Protocol/vector used for bandwidth, PPS and packet-size panels
+        allowCustomValue: false

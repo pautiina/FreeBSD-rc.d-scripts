@@ -1,0 +1,450 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: 0DQGlW47k
+  namespace: default
+  uid: 0cC6XHhKP9UhadAnYo1edRZm5yT9uX70Id48kGjB9I0X
+  resourceVersion: '1790787351523992'
+  generation: 2
+  creationTimestamp: '2023-05-22T18:14:59Z'
+  labels:
+    grafana.app/deprecatedInternalID: '34'
+  annotations:
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T16:55:51Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: ''
+          version: v0
+          spec:
+            limit: 100
+            matchAny: false
+            tags: []
+            type: dashboard
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+  cursorSync: 'Off'
+  description: >-
+    FastNetMon Advanced Clickhouse traffic persistence / flow database with
+    ability to query using source IP, port, destination IP, port and protocol.
+  editable: true
+  elements:
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: Flow storage
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: packetDate
+                      dateLoading: false
+                      dateTimeColDataType: packetDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      extrapolate: true
+                      format: table
+                      formattedQuery: >-
+                        SELECT $timeSeries as t, count() FROM $table WHERE
+                        $timeFilter GROUP BY t ORDER BY t
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        SELECT
+                            packetDateTime,
+                            IPv4NumToString(srcIp) as srcIP,
+                            IPv4NumToString(dstIp) as dstIP,
+                            sourcePort,
+                            destinationPort,
+                            numberOfPackets as packets,
+                            length,
+                            srcAsn,
+                            dstAsn,
+                            transform(protocol, [17, 6, 1], ['udp', 'tcp', 'icmp'], 'unknown') as protocolName,
+                            IPv4NumToString(agentIpAddress) as agent,
+                            inputInterface as input,
+                            outputInterface as output,
+                            sampleRatio,
+                            arrayMap(x -> transform(x, [1, 2, 4, 8, 16, 32, 64, 128, 256, 512], ['fin', 'syn', 'rst', 'psh', 'ack', 'urg', 'ecn', 'cwr', 'nonce', 'reserved'], 'unknown'), bitmaskToArray(flags)) as TcpFlags
+                        FROM $table
+
+                        WHERE
+                            $timeFilter
+                            AND srcIp = IPv4StringToNum('$source_ip')
+                            AND dstIp = IPv4StringToNum('$destination_ip')
+                        and sourcePort = $source_port
+                         and destinationPort = $destination_port
+                         and protocolName = '$protocol'
+                      rawQuery: |-
+                        SELECT
+                            packetDateTime,
+                            IPv4NumToString(srcIp) as srcIP,
+                            IPv4NumToString(dstIp) as dstIP,
+                            sourcePort,
+                            destinationPort,
+                            numberOfPackets as packets,
+                            length,
+                            srcAsn,
+                            dstAsn,
+                            transform(protocol, [17, 6, 1], ['udp', 'tcp', 'icmp'], 'unknown') as protocolName,
+                            IPv4NumToString(agentIpAddress) as agent,
+                            inputInterface as input,
+                            outputInterface as output,
+                            sampleRatio,
+                            arrayMap(x -> transform(x, [1, 2, 4, 8, 16, 32, 64, 128, 256, 512], ['fin', 'syn', 'rst', 'psh', 'ack', 'urg', 'ecn', 'cwr', 'nonce', 'reserved'], 'unknown'), bitmaskToArray(flags)) as TcpFlags
+                        FROM fastnetmon.traffic
+
+                        WHERE
+                            packetDate >= toDate(1629976160) AND packetDate <= toDate(1629976460) AND packetDateTime >= toDateTime(1629976160) AND packetDateTime <= toDateTime(1629976460)
+                            AND srcIp = IPv4StringToNum('10.20.30.14')
+                            AND dstIp = IPv4StringToNum('8.8.8.8')
+                        and sourcePort = 58624
+                         and destinationPort = 53
+                         and protocolName = 'udp'
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      skip_comments: true
+                      table: traffic
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: ''
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: table-old
+                originalOptions:
+                  columns: []
+                  fontSize: 100%
+                  scroll: true
+                  showHeader: true
+                  sort:
+                    col: 0
+                    desc: true
+                  styles:
+                    - alias: Time
+                      align: auto
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      pattern: Time
+                      type: date
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: sourcePort
+                      thresholds: []
+                      type: string
+                      unit: none
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: destinationPort
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: length
+                      thresholds: []
+                      type: number
+                      unit: bytes
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: srcAsn
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: dstAsn
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: inputInterface
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: outputInterface
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: sampleRatio
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: packets
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      dateFormat: YYYY-MM-DD HH:mm:ss
+                      decimals: 2
+                      mappingType: 1
+                      pattern: TcpFlags
+                      thresholds: []
+                      type: string
+                      unit: short
+                    - alias: ''
+                      align: auto
+                      colors:
+                        - rgba(245, 54, 54, 0.9)
+                        - rgba(237, 129, 40, 0.89)
+                        - rgba(50, 172, 45, 0.97)
+                      decimals: 2
+                      pattern: /.*/
+                      thresholds: []
+                      type: number
+                      unit: short
+                  transform: table
+            fieldConfig:
+              defaults: {}
+              overrides: []
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 24
+            height: 16
+            element:
+              kind: ElementReference
+              name: panel-2
+  links: []
+  liveNow: false
+  preload: false
+  tags: []
+  timeSettings:
+    from: now-3h
+    to: now
+    autoRefresh: ''
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon Flow database full query
+  variables:
+    - kind: CustomVariable
+      spec:
+        name: source_ip
+        query: 8.8.8.8
+        current:
+          text: 10.20.30.14
+          value: 10.20.30.14
+        options:
+          - selected: true
+            text: 8.8.8.8
+            value: 8.8.8.8
+        multi: false
+        includeAll: false
+        label: Source IP
+        hide: dontHide
+        skipUrlSync: false
+        allowCustomValue: true
+    - kind: CustomVariable
+      spec:
+        name: source_port
+        query: '80'
+        current:
+          text: '64669'
+          value: '64669'
+        options:
+          - selected: true
+            text: '80'
+            value: '80'
+        multi: false
+        includeAll: false
+        label: Source port
+        hide: dontHide
+        skipUrlSync: false
+        allowCustomValue: true
+    - kind: CustomVariable
+      spec:
+        name: destination_ip
+        query: 8.8.8.8
+        current:
+          text: 8.8.8.8
+          value: 8.8.8.8
+        options:
+          - selected: true
+            text: 8.8.8.8
+            value: 8.8.8.8
+        multi: false
+        includeAll: false
+        label: Destination IP
+        hide: dontHide
+        skipUrlSync: false
+        allowCustomValue: true
+    - kind: CustomVariable
+      spec:
+        name: destination_port
+        query: '80'
+        current:
+          text: '53'
+          value: '53'
+        options:
+          - selected: true
+            text: '80'
+            value: '80'
+        multi: false
+        includeAll: false
+        label: Destination port
+        hide: dontHide
+        skipUrlSync: false
+        allowCustomValue: true
+    - kind: CustomVariable
+      spec:
+        name: protocol
+        query: udp,tcp,icmp,unknown
+        current:
+          text: udp
+          value: udp
+        options:
+          - selected: true
+            text: udp
+            value: udp
+          - selected: false
+            text: tcp
+            value: tcp
+          - selected: false
+            text: icmp
+            value: icmp
+          - selected: false
+            text: unknown
+            value: unknown
+        multi: false
+        includeAll: false
+        label: Protocol
+        hide: dontHide
+        skipUrlSync: false
+        allowCustomValue: true

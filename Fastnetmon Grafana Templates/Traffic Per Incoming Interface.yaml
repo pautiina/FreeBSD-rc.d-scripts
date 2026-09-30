@@ -1,0 +1,582 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: f399921c-f091-4cf4-b892-e245e79b4d7b1
+  namespace: default
+  uid: fdb936c5-6722-4ced-8670-d436cc1b9247
+  resourceVersion: '1790759959004013'
+  generation: 2
+  creationTimestamp: '2026-09-30T09:15:43Z'
+  labels:
+    grafana.app/deprecatedInternalID: '2044038028337152'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T09:19:18Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations: []
+  cursorSync: 'Off'
+  description: >-
+    Traffic observed on the selected inputInterface. Shows both source and
+    destination ASN perspectives using sampled FastNetMon traffic data.
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: Source ASNs — bandwidth (traffic entering interface)
+        description: Top 10 source ASNs for flows observed on the selected input interface.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        SELECT
+                            packetDateTime AS time,
+                            concat(dictGetOrDefault('fastnetmon.asn_information', 'asn_name', toUInt64(srcAsn), 'Unknown'), ' AS', toString(srcAsn)) AS ASN,
+                            sum(length * sampleRatio * 8) AS bps
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                          AND srcAsn IN (
+                              SELECT srcAsn
+                              FROM fastnetmon.traffic
+                              WHERE $__timeFilter(packetDateTime)
+                                AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                              GROUP BY srcAsn
+                              ORDER BY sum(length * sampleRatio * 8) DESC
+                              LIMIT 10
+                          )
+                        GROUP BY time, srcAsn
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: Source ASNs — packet rate
+        description: Top 10 source ASNs by estimated packet rate.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        SELECT
+                            packetDateTime AS time,
+                            concat(dictGetOrDefault('fastnetmon.asn_information', 'asn_name', toUInt64(srcAsn), 'Unknown'), ' AS', toString(srcAsn)) AS ASN,
+                            sum(numberOfPackets * sampleRatio) AS pps
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                          AND srcAsn IN (
+                              SELECT srcAsn
+                              FROM fastnetmon.traffic
+                              WHERE $__timeFilter(packetDateTime)
+                                AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                              GROUP BY srcAsn
+                              ORDER BY sum(numberOfPackets * sampleRatio) DESC
+                              LIMIT 10
+                          )
+                        GROUP BY time, srcAsn
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: Destination ASNs — bandwidth (same incoming interface)
+        description: >-
+          Top 10 destination ASNs for the same flows entering the selected
+          interface.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        SELECT
+                            packetDateTime AS time,
+                            concat(dictGetOrDefault('fastnetmon.asn_information', 'asn_name', toUInt64(dstAsn), 'Unknown'), ' AS', toString(dstAsn)) AS ASN,
+                            sum(length * sampleRatio * 8) AS bps
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                          AND dstAsn IN (
+                              SELECT dstAsn
+                              FROM fastnetmon.traffic
+                              WHERE $__timeFilter(packetDateTime)
+                                AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                              GROUP BY dstAsn
+                              ORDER BY sum(length * sampleRatio * 8) DESC
+                              LIMIT 10
+                          )
+                        GROUP BY time, dstAsn
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: Destination ASNs — packet rate
+        description: >-
+          Top 10 destination ASNs by estimated packet rate for the same input
+          interface.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        SELECT
+                            packetDateTime AS time,
+                            concat(dictGetOrDefault('fastnetmon.asn_information', 'asn_name', toUInt64(dstAsn), 'Unknown'), ' AS', toString(dstAsn)) AS ASN,
+                            sum(numberOfPackets * sampleRatio) AS pps
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                          AND dstAsn IN (
+                              SELECT dstAsn
+                              FROM fastnetmon.traffic
+                              WHERE $__timeFilter(packetDateTime)
+                                AND ('$interface' = '0' OR inputInterface = toUInt32('$interface'))
+                              GROUP BY dstAsn
+                              ORDER BY sum(numberOfPackets * sampleRatio) DESC
+                              LIMIT 10
+                          )
+                        GROUP BY time, dstAsn
+                        ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 12
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 0
+            width: 12
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 14
+            width: 12
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 14
+            width: 12
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-4
+  links: []
+  liveNow: false
+  preload: false
+  tags:
+    - FastNetMon
+    - ClickHouse
+    - ASN
+    - interface
+  timeSettings:
+    from: now-15m
+    to: now
+    autoRefresh: 10s
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon / Traffic Per Incoming Interface
+  variables:
+    - kind: QueryVariable
+      spec:
+        name: interface
+        current:
+          text: All
+          value: $__all
+        label: Input interface
+        hide: dontHide
+        refresh: onDashboardLoad
+        skipUrlSync: false
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            __legacyStringValue: >-
+              SELECT DISTINCT inputInterface FROM fastnetmon.traffic WHERE
+              inputInterface != 0 ORDER BY inputInterface
+        regex: ''
+        sort: numericalAsc
+        definition: >-
+          SELECT DISTINCT inputInterface FROM fastnetmon.traffic WHERE
+          inputInterface != 0 ORDER BY inputInterface
+        options: []
+        multi: false
+        includeAll: true
+        allValue: '0'
+        allowCustomValue: true

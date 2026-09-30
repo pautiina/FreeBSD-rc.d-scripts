@@ -1,0 +1,3460 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: fnm-collector-system-health
+  namespace: default
+  uid: a8ec8063-8c0d-47cd-a755-cff695fba801
+  resourceVersion: '1790789519634018'
+  generation: 2
+  creationTimestamp: '2026-09-30T17:27:07Z'
+  labels:
+    grafana.app/deprecatedInternalID: '2167704779104256'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T17:31:59Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            limit: 100
+            matchAny: false
+            tags: []
+            type: dashboard
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+  cursorSync: 'Off'
+  description: >-
+    FastNetMon collector and internal health dashboard based on
+    fastnetmon.system_metrics. Counter metrics are displayed as reset-aware
+    deltas/rates; gauges are displayed directly. v2 includes explicit numeric
+    casts for ClickHouse compatibility.
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: System metrics age
+        description: Age of the newest system_metrics sample.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT dateDiff('second', max(metricDateTime), now()) AS
+                        value FROM fastnetmon.system_metrics
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: s
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                    - value: 15
+                      color: yellow
+                    - value: 30
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-10:
+      kind: Panel
+      spec:
+        id: 10
+        title: Unparsed packets speed
+        description: Latest total_unparsed_packets_speed gauge.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT argMax(value, metricDateTime) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE name = 'total_unparsed_packets_speed'
+                          AND metricDateTime >= now() - INTERVAL 10 MINUTE
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-11:
+      kind: Panel
+      spec:
+        id: 11
+        title: NetFlow collector flow rate
+        description: Current FastNetMon flow processing speed gauge.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                          multiIf(name='netflow_all_protocols_total_flows_speed', 'All NetFlow/IPFIX flows/s', name) AS metric,
+                          avg(value) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE $__timeFilter(metricDateTime)
+                          AND name IN ('netflow_all_protocols_total_flows_speed')
+                        GROUP BY time, metric
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-12:
+      kind: Panel
+      spec:
+        id: 12
+        title: Collector packets/s by protocol version
+        description: >-
+          Reset-aware per-second rate calculated from cumulative packet
+          counters.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v5_total_packets', 'NetFlow v5', name='netflow_v9_total_packets', 'NetFlow v9', name='ipfix_total_packets', 'IPFIX', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v5_total_packets','netflow_v9_total_packets','ipfix_total_packets')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-13:
+      kind: Panel
+      spec:
+        id: 13
+        title: Collector flows/s by protocol version
+        description: >-
+          Reset-aware per-second rate calculated from cumulative decoded-flow
+          counters.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v5_total_flows', 'NetFlow v5', name='netflow_v9_total_flows', 'NetFlow v9', name='ipfix_total_flows', 'IPFIX', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v5_total_flows','netflow_v9_total_flows','ipfix_total_flows')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-14:
+      kind: Panel
+      spec:
+        id: 14
+        title: IPv4 / IPv6 decoded flows/s
+        description: Decoded IPv4 and IPv6 flow rates.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v9_total_ipv4_flows', 'NetFlow v9 IPv4', name='netflow_v9_total_ipv6_flows', 'NetFlow v9 IPv6', name='ipfix_total_ipv4_flows', 'IPFIX IPv4', name='ipfix_total_ipv6_flows', 'IPFIX IPv6', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v9_total_ipv4_flows','netflow_v9_total_ipv6_flows','ipfix_total_ipv4_flows','ipfix_total_ipv6_flows')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-15:
+      kind: Panel
+      spec:
+        id: 15
+        title: Parser / decoder errors per second
+        description: Reset-aware rates of selected malformed/decode error counters.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v9_broken_packets', 'v9 broken packets', name='netflow_v9_lite_header_parser_error', 'v9 header parser errors', name='ipfix_inline_header_parser_error', 'IPFIX header parser errors', name='netflow_ipfix_unknown_protocol_version', 'Unknown protocol version', name='netflow_v9_too_large_field', 'v9 too-large fields', name='ipfix_too_large_field', 'IPFIX too-large fields', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v9_broken_packets','netflow_v9_lite_header_parser_error','ipfix_inline_header_parser_error','netflow_ipfix_unknown_protocol_version','netflow_v9_too_large_field','ipfix_too_large_field')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-16:
+      kind: Panel
+      spec:
+        id: 16
+        title: Unknown templates per second
+        description: Packets that could not be decoded because their template was unknown.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v9_packets_with_unknown_templates', 'NetFlow v9 unknown template', name='ipfix_packets_with_unknown_templates', 'IPFIX unknown template', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v9_packets_with_unknown_templates','ipfix_packets_with_unknown_templates')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-17:
+      kind: Panel
+      spec:
+        id: 17
+        title: Template activity per second
+        description: Template receipt/update activity.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v9_data_templates_number', 'v9 data templates', name='netflow_v9_options_templates_number', 'v9 options templates', name='ipfix_data_templates_number', 'IPFIX data templates', name='ipfix_options_templates_number', 'IPFIX options templates', name='netflow_v9_template_updates_number_due_to_real_changes', 'v9 real template changes', name='ipfix_template_updates_number_due_to_real_changes', 'IPFIX real template changes', name='template_update_attempts_with_same_template_data', 'Same-template update attempts', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v9_data_templates_number','netflow_v9_options_templates_number','ipfix_data_templates_number','ipfix_options_templates_number','netflow_v9_template_updates_number_due_to_real_changes','ipfix_template_updates_number_due_to_real_changes','template_update_attempts_with_same_template_data')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-18:
+      kind: Panel
+      spec:
+        id: 18
+        title: UDP / socket error counters per second
+        description: >-
+          FastNetMon and host UDP-stack error rates. Kernel counters are global
+          system UDP counters.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_ipfix_udp_packet_drops', 'FastNetMon UDP drops', name='global_system_rcvbuferrors', 'Kernel RcvBufErrors', name='global_system_inerrors', 'Kernel InErrors', name='global_system_incsumerrors', 'Kernel InCsumErrors', name='global_system_sndbuferrors', 'Kernel SndBufErrors', name='global_system_noports', 'Kernel NoPorts', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_ipfix_udp_packet_drops','global_system_rcvbuferrors','global_system_inerrors','global_system_incsumerrors','global_system_sndbuferrors','global_system_noports')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-19:
+      kind: Panel
+      spec:
+        id: 19
+        title: Traffic DB sampler rates
+        description: Traffic DB sampler input and selected sample rates.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='traffic_db_sampler_seen_packets', 'Sampler seen packets/s', name='traffic_db_sampler_selected_packets', 'Sampler selected packets/s', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('traffic_db_sampler_seen_packets','traffic_db_sampler_selected_packets')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: NetFlow flow rate
+        description: FastNetMon netflow_all_protocols_total_flows_speed gauge.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT argMax(value, metricDateTime) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE name = 'netflow_all_protocols_total_flows_speed'
+                          AND metricDateTime >= now() - INTERVAL 10 MINUTE
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-20:
+      kind: Panel
+      spec:
+        id: 20
+        title: Storage writer throughput
+        description: Write activity for FastNetMon persistence paths.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='clickhouse_metrics_writes_total', 'ClickHouse metric writes/s', name='traffic_db_pushed_messages', 'Traffic DB pushed messages/s', name='template_netflow_ipfix_disk_writes', 'Template disk writes/s', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('clickhouse_metrics_writes_total','traffic_db_pushed_messages','template_netflow_ipfix_disk_writes')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-21:
+      kind: Panel
+      spec:
+        id: 21
+        title: Storage errors per second
+        description: Persistence error rates.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='clickhouse_metrics_writes_failed', 'ClickHouse write failures/s', name='traffic_db_errors', 'Traffic DB errors/s', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('clickhouse_metrics_writes_failed','traffic_db_errors')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-22:
+      kind: Panel
+      spec:
+        id: 22
+        title: Sampling-rate change events per second
+        description: >-
+          Sampling-related collector events. Frequent unexpected changes can
+          indicate exporter/template issues.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='netflow_v9_sampling_rate_changes', 'NetFlow v9 sampling changes', name='ipfix_sampling_rate_changes', 'IPFIX sampling changes', name='netflow_v9_custom_sampling_rate_received', 'v9 custom sampling received', name='ipfix_custom_sampling_rate_received', 'IPFIX custom sampling received', name='netflow_v9_flows_with_sampling_encoded_in_data_packet_number', 'v9 sampling in data records', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('netflow_v9_sampling_rate_changes','ipfix_sampling_rate_changes','netflow_v9_custom_sampling_rate_received','ipfix_custom_sampling_rate_received','netflow_v9_flows_with_sampling_encoded_in_data_packet_number')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-23:
+      kind: Panel
+      spec:
+        id: 23
+        title: Flow tracking entries
+        description: Current FastNetMon connection/flow tracking table sizes.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                          multiIf(name='entries_flow_tracking_ipv4', 'IPv4 total', name='entries_flow_tracking_tcp_ipv4', 'TCP', name='entries_flow_tracking_udp_ipv4', 'UDP', name='entries_flow_tracking_icmp_ipv4', 'ICMP', name='entries_flow_tracking_other_ipv4', 'Other', name) AS metric,
+                          avg(value) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE $__timeFilter(metricDateTime)
+                          AND name IN ('entries_flow_tracking_ipv4','entries_flow_tracking_tcp_ipv4','entries_flow_tracking_udp_ipv4','entries_flow_tracking_icmp_ipv4','entries_flow_tracking_other_ipv4')
+                        GROUP BY time, metric
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-24:
+      kind: Panel
+      spec:
+        id: 24
+        title: Host table state
+        description: Host/hash table state gauges.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                          multiIf(name='total_number_of_hosts', 'Monitored hosts', name='hosts_hash_size', 'IPv4 hash size', name='hosts_hash_bucket_count', 'IPv4 hash buckets', name='hosts_hash_size_ipv6', 'IPv6 hash size', name='hosts_hash_ipv6_bucket_count', 'IPv6 hash buckets', name) AS metric,
+                          avg(value) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE $__timeFilter(metricDateTime)
+                          AND name IN ('total_number_of_hosts','hosts_hash_size','hosts_hash_bucket_count','hosts_hash_size_ipv6','hosts_hash_ipv6_bucket_count')
+                        GROUP BY time, metric
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-25:
+      kind: Panel
+      spec:
+        id: 25
+        title: Traffic buffer duration
+        description: Current traffic buffer duration reported by FastNetMon.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                          multiIf(name='traffic_buffer_duration_seconds_ipv4', 'IPv4 buffer', name='traffic_buffer_duration_seconds_ipv6', 'IPv6 buffer', name) AS metric,
+                          avg(value) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE $__timeFilter(metricDateTime)
+                          AND name IN ('traffic_buffer_duration_seconds_ipv4','traffic_buffer_duration_seconds_ipv6')
+                        GROUP BY time, metric
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: s
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-26:
+      kind: Panel
+      spec:
+        id: 26
+        title: Speed recalculation time
+        description: FastNetMon speed recalculation time in milliseconds.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                          multiIf(name='speed_recalculation_time_microseconds', 'Recalculation time', name) AS metric,
+                          avg(value) / 1000.0 AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE $__timeFilter(metricDateTime)
+                          AND name IN ('speed_recalculation_time_microseconds')
+                        GROUP BY time, metric
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ms
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-27:
+      kind: Panel
+      spec:
+        id: 27
+        title: Calculation-delay counters per second
+        description: Internal FastNetMon calculation scheduling counters.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
+                        SELECT
+                          time,
+                          multiIf(name='all_traffic_calculation_too_slow', 'Calculation too slow', name='all_traffic_calculation_delay_longer', 'Delay longer', name='all_traffic_calculation_delay_shorter', 'Delay shorter', name='all_traffic_calculation_delay_negative', 'Delay negative', name) AS metric,
+                          if(
+                             current_value >= previous_value,
+                             toFloat64(toInt128(current_value) - toInt128(previous_value)) / step,
+                             toFloat64(current_value) / step
+                          ) AS rate
+                        FROM (
+                          SELECT
+                            time,
+                            name,
+                            current_value,
+                            lagInFrame(current_value, 1, current_value)
+                              OVER (PARTITION BY name ORDER BY time
+                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_value
+                          FROM (
+                            SELECT
+                              toDateTime(intDiv(toUInt32(metricDateTime), step) * step) AS time,
+                              name,
+                              argMax(value, metricDateTime) AS current_value
+                            FROM fastnetmon.system_metrics
+                            WHERE $__timeFilter(metricDateTime)
+                              AND name IN ('all_traffic_calculation_too_slow','all_traffic_calculation_delay_longer','all_traffic_calculation_delay_shorter','all_traffic_calculation_delay_negative')
+                            GROUP BY time, name
+                          )
+                        )
+                        ORDER BY time, metric
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: ops
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-28:
+      kind: Panel
+      spec:
+        id: 28
+        title: Calculation timers — raw FastNetMon metrics
+        description: >-
+          Metrics whose type is reported as unknown are intentionally shown
+          without an assumed unit.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT
+                          name AS Metric,
+                          type AS Type,
+                          argMax(value, metricDateTime) AS `Latest value`,
+                          max(metricDateTime) AS `Last update`
+                        FROM fastnetmon.system_metrics
+                        WHERE metricDateTime >= now() - INTERVAL 10 MINUTE
+                          AND (
+                            name LIKE '%calculation_time%'
+                            OR name IN ('speed_recalculation_time_microseconds','speed_recalculation_time_seconds')
+                          )
+                        GROUP BY name, type
+                        ORDER BY name
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides: []
+    panel-29:
+      kind: Panel
+      spec:
+        id: 29
+        title: Problem counters changed in health window
+        description: >-
+          Only potentially problematic cumulative counters whose value increased
+          in the selected health window.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT
+                          name AS Metric,
+                          metric_type AS Type,
+                          if(
+                            last_value >= first_value,
+                            toInt128(last_value) - toInt128(first_value),
+                            toInt128(last_value)
+                          ) AS Delta,
+                          first_value AS `First value`,
+                          last_value AS `Last value`
+                        FROM (
+                          SELECT
+                            name,
+                            any(system_metrics.type) AS metric_type,
+                            argMin(value, metricDateTime) AS first_value,
+                            argMax(value, metricDateTime) AS last_value
+                          FROM fastnetmon.system_metrics AS system_metrics
+                          WHERE metricDateTime >= now() - toIntervalSecond($delta_seconds)
+                            AND system_metrics.type = 'counter'
+                            AND match(
+                              lower(name),
+                              '(error|errors|drop|drops|failed|broken|unknown|negative|too_slow|too_large|anomaly|ignored|rcvbuf|sndbuf|noports)'
+                            )
+                          GROUP BY name
+                        )
+                        WHERE Delta > 0
+                        ORDER BY Delta DESC, Metric
+                        LIMIT 100
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides: []
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: Speed recalculation time
+        description: >-
+          FastNetMon speed recalculation time, converted from microseconds to
+          milliseconds.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT argMax(value, metricDateTime) / 1000.0 AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE name = 'speed_recalculation_time_microseconds'
+                          AND metricDateTime >= now() - INTERVAL 10 MINUTE
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: ms
+                decimals: 2
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-30:
+      kind: Panel
+      spec:
+        id: 30
+        title: Current gauges
+        description: Latest values for all system_metrics whose FastNetMon type is gauge.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT
+                          name AS Metric,
+                          argMax(value, metricDateTime) AS Value,
+                          max(metricDateTime) AS `Last update`
+                        FROM fastnetmon.system_metrics
+                        WHERE metricDateTime >= now() - INTERVAL 10 MINUTE
+                          AND type = 'gauge'
+                        GROUP BY name
+                        ORDER BY name
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides: []
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: Monitored hosts
+        description: Latest FastNetMon total_number_of_hosts gauge.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT argMax(value, metricDateTime) AS value
+                        FROM fastnetmon.system_metrics
+                        WHERE name = 'total_number_of_hosts'
+                          AND metricDateTime >= now() - INTERVAL 10 MINUTE
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-5:
+      kind: Panel
+      spec:
+        id: 5
+        title: UDP receive drops — Δ window
+        description: >-
+          Increase of netflow_ipfix_udp_packet_drops over the selected health
+          delta window.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                          SELECT
+                            name,
+                            argMin(value, metricDateTime) AS first_value,
+                            argMax(value, metricDateTime) AS last_value
+                          FROM fastnetmon.system_metrics
+                          WHERE metricDateTime >= now() - toIntervalSecond($delta_seconds)
+                            AND name IN ('netflow_ipfix_udp_packet_drops')
+                          GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-6:
+      kind: Panel
+      spec:
+        id: 6
+        title: Unknown templates — Δ window
+        description: NetFlow v9 and IPFIX packets referencing unknown templates.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                          SELECT
+                            name,
+                            argMin(value, metricDateTime) AS first_value,
+                            argMax(value, metricDateTime) AS last_value
+                          FROM fastnetmon.system_metrics
+                          WHERE metricDateTime >= now() - toIntervalSecond($delta_seconds)
+                            AND name IN ('netflow_v9_packets_with_unknown_templates','ipfix_packets_with_unknown_templates')
+                          GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-7:
+      kind: Panel
+      spec:
+        id: 7
+        title: Parser errors — Δ window
+        description: Combined increase of selected parser/decode error counters.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                          SELECT
+                            name,
+                            argMin(value, metricDateTime) AS first_value,
+                            argMax(value, metricDateTime) AS last_value
+                          FROM fastnetmon.system_metrics
+                          WHERE metricDateTime >= now() - toIntervalSecond($delta_seconds)
+                            AND name IN ('netflow_v9_broken_packets','netflow_v9_lite_header_parser_error','ipfix_inline_header_parser_error','netflow_ipfix_unknown_protocol_version','netflow_v9_too_large_field','ipfix_too_large_field')
+                          GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-8:
+      kind: Panel
+      spec:
+        id: 8
+        title: Storage errors — Δ window
+        description: Combined ClickHouse metrics writer failures and traffic DB errors.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                          SELECT
+                            name,
+                            argMin(value, metricDateTime) AS first_value,
+                            argMax(value, metricDateTime) AS last_value
+                          FROM fastnetmon.system_metrics
+                          WHERE metricDateTime >= now() - toIntervalSecond($delta_seconds)
+                            AND name IN ('clickhouse_metrics_writes_failed','traffic_db_errors')
+                          GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-9:
+      kind: Panel
+      spec:
+        id: 9
+        title: Traffic DB sample selected
+        description: >-
+          Selected traffic DB samples as a percentage of seen packets over the
+          health delta window.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        WITH deltas AS (
+                          SELECT
+                            name,
+                            if(
+                              last_value >= first_value,
+                              toInt128(last_value) - toInt128(first_value),
+                              toInt128(last_value)
+                            ) AS delta
+                          FROM (
+                            SELECT
+                              name,
+                              argMin(value, metricDateTime) AS first_value,
+                              argMax(value, metricDateTime) AS last_value
+                            FROM fastnetmon.system_metrics
+                            WHERE metricDateTime >= now() - toIntervalSecond($delta_seconds)
+                              AND name IN ('traffic_db_sampler_seen_packets','traffic_db_sampler_selected_packets')
+                            GROUP BY name
+                          )
+                        )
+                        SELECT
+                          if(
+                            sumIf(delta, name = 'traffic_db_sampler_seen_packets') = 0,
+                            0.0,
+                            100.0
+                              * toFloat64(sumIf(delta, name = 'traffic_db_sampler_selected_packets'))
+                              / toFloat64(sumIf(delta, name = 'traffic_db_sampler_seen_packets'))
+                          ) AS value
+                        FROM deltas
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 12.4.2
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: percent
+                decimals: 3
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 6
+            'y': 0
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 0
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 18
+            'y': 0
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-4
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 6
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-5
+        - kind: GridLayoutItem
+          spec:
+            x: 6
+            'y': 6
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-6
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 6
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-7
+        - kind: GridLayoutItem
+          spec:
+            x: 18
+            'y': 6
+            width: 6
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-8
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 12
+            width: 12
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-9
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 12
+            width: 12
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-10
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 18
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-11
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 18
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-12
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 28
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-13
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 28
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-14
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 38
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-15
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 38
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-16
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 48
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-17
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 48
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-18
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 58
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-19
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 58
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-20
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 68
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-21
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 68
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-22
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 78
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-23
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 78
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-24
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 88
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-25
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 88
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-26
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 98
+            width: 24
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-27
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 108
+            width: 24
+            height: 12
+            element:
+              kind: ElementReference
+              name: panel-28
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 120
+            width: 24
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-29
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 134
+            width: 24
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-30
+  links: []
+  liveNow: false
+  preload: false
+  tags:
+    - fastnetmon
+    - health
+    - netflow
+    - clickhouse
+  timeSettings:
+    from: now-1h
+    to: now
+    autoRefresh: 5s
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon — Collector / System Health
+  variables:
+    - kind: CustomVariable
+      spec:
+        name: delta_seconds
+        query: '5 min : 300, 15 min : 900, 1 hour : 3600'
+        current:
+          text: 5 min
+          value: '300'
+        options:
+          - selected: true
+            text: 5 min
+            value: '300'
+          - selected: false
+            text: 15 min
+            value: '900'
+          - selected: false
+            text: 1 hour
+            value: '3600'
+        multi: false
+        includeAll: false
+        label: Health delta window
+        hide: dontHide
+        skipUrlSync: false
+        description: Window used by delta/error summary panels.
+        allowCustomValue: false

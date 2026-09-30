@@ -1,0 +1,758 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: gFt_deEnk
+  namespace: default
+  uid: 1Hl6nEVAisiQnmsp7PMw87Nn3rvlwXh8vpxVXbONVkMX
+  resourceVersion: '1790787770449018'
+  generation: 3
+  creationTimestamp: '2023-09-28T11:38:42Z'
+  labels:
+    grafana.app/deprecatedInternalID: '56'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T17:02:50Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: datasource
+          version: v0
+          datasource:
+            name: grafana
+          spec: {}
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+  cursorSync: 'Off'
+  description: FastNetMon Advanced TOP 10 Hosts per network
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: Incoming traffic
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: metricDate
+                      dateLoading: false
+                      dateTimeColDataType: metricDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        $columns(
+                            host c,
+                            sum(bits_incoming) length)
+                        FROM $table
+                        WHERE host in (
+                            SELECT host
+                            FROM
+                        (
+                                SELECT
+                                    host,
+                                    sum(bits_incoming) as length
+                                FROM $table
+                                WHERE $timeFilter and isIPAddressInRange(host, '$Network')
+                                GROUP BY host
+                                ORDER BY length DESC
+                                LIMIT 7
+                        ))
+                      rawQuery: >-
+                        SELECT t, groupArray((c, length)) AS groupArr FROM (
+                        SELECT (intDiv(toUInt32(metricDateTime), 1) * 1) * 1000
+                        AS t, host c, sum(bits_incoming) length FROM
+                        fastnetmon.host_metrics WHERE metricDate >=
+                        toDate(1648080103) AND metricDateTime >=
+                        toDateTime(1648080103) AND host in (     SELECT host    
+                        FROM (         SELECT             host,            
+                        sum(bits_incoming) as length         FROM
+                        fastnetmon.host_metrics         WHERE metricDate >=
+                        toDate(1648080103) AND metricDateTime >=
+                        toDateTime(1648080103) and isIPAddressInRange(host,
+                        '103.100.92.0/24')         GROUP BY host         ORDER
+                        BY length DESC         LIMIT 7 )) GROUP BY t, c ORDER BY
+                        t, c) GROUP BY t ORDER BY t
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      table: host_metrics
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 9.5.2
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: graph
+                originalOptions:
+                  aliasColors: {}
+                  bars: false
+                  dashLength: 10
+                  dashes: false
+                  fill: 1
+                  fillGradient: 0
+                  hiddenSeries: false
+                  legend:
+                    alignAsTable: true
+                    avg: false
+                    current: true
+                    max: false
+                    min: false
+                    rightSide: true
+                    show: true
+                    sideWidth: 200
+                    sort: current
+                    sortDesc: true
+                    total: false
+                    values: true
+                  lines: true
+                  linewidth: 1
+                  nullPointMode: 'null'
+                  percentage: false
+                  pointradius: 5
+                  points: false
+                  renderer: flot
+                  seriesOverrides: []
+                  spaceLength: 10
+                  stack: false
+                  steppedLine: false
+                  thresholds: []
+                  timeRegions: []
+                  tooltip:
+                    shared: false
+                    sort: 0
+                    value_type: individual
+                  xaxis:
+                    mode: time
+                    show: false
+                    values: []
+                  yaxes:
+                    - format: bps
+                      label: MBPS IN
+                      logBase: 1
+                      show: true
+                    - format: short
+                      logBase: 1
+                      show: false
+                  yaxis:
+                    align: false
+              alertThreshold: true
+            fieldConfig:
+              defaults: {}
+              overrides: []
+        transparent: true
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: Packets incoming
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: metricDate
+                      dateLoading: false
+                      dateTimeColDataType: metricDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        $columns(
+                            host c,
+                            sum(packets_incoming) length)
+                        FROM $table
+                        WHERE host in (
+                            SELECT host
+                            FROM
+                        (
+                                SELECT
+                                    host,
+                                    sum(packets_incoming) as length
+                                FROM $table
+                                WHERE $timeFilter  and isIPAddressInRange(host, '$Network')
+                                GROUP BY host
+                                ORDER BY length DESC
+                                LIMIT 25
+                        ))
+                      rawQuery: >-
+                        SELECT t, groupArray((c, length)) AS groupArr FROM (
+                        SELECT (intDiv(toUInt32(metricDateTime), 1) * 1) * 1000
+                        AS t, host c, sum(packets_incoming) length FROM
+                        fastnetmon.host_metrics WHERE metricDate BETWEEN
+                        toDate(1647820799) AND toDate(1647993600) AND
+                        metricDateTime BETWEEN toDateTime(1647820799) AND
+                        toDateTime(1647993600) AND host in (     SELECT host    
+                        FROM (         SELECT             host,            
+                        sum(packets_incoming) as length         FROM
+                        fastnetmon.host_metrics         WHERE metricDate BETWEEN
+                        toDate(1647820799) AND toDate(1647993600) AND
+                        metricDateTime BETWEEN toDateTime(1647820799) AND
+                        toDateTime(1647993600)  and isIPAddressInRange(host,
+                        '203.190.12.0/24')         GROUP BY host         ORDER
+                        BY length DESC         LIMIT 25 )) GROUP BY t, c ORDER
+                        BY t, c) GROUP BY t ORDER BY t
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      table: host_metrics
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 9.5.2
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: graph
+                originalOptions:
+                  aliasColors: {}
+                  bars: false
+                  dashLength: 10
+                  dashes: false
+                  fill: 1
+                  fillGradient: 0
+                  hiddenSeries: false
+                  legend:
+                    alignAsTable: true
+                    avg: false
+                    current: true
+                    max: false
+                    min: false
+                    rightSide: true
+                    show: true
+                    sideWidth: 200
+                    sort: current
+                    sortDesc: true
+                    total: false
+                    values: true
+                  lines: true
+                  linewidth: 1
+                  nullPointMode: 'null'
+                  percentage: false
+                  pointradius: 5
+                  points: false
+                  renderer: flot
+                  seriesOverrides: []
+                  spaceLength: 10
+                  stack: false
+                  steppedLine: false
+                  thresholds: []
+                  timeRegions: []
+                  tooltip:
+                    shared: false
+                    sort: 0
+                    value_type: individual
+                  xaxis:
+                    mode: time
+                    show: false
+                    values: []
+                  yaxes:
+                    - format: pps
+                      label: PPS IN
+                      logBase: 1
+                      show: true
+                    - format: short
+                      logBase: 1
+                      show: false
+                  yaxis:
+                    align: false
+              alertThreshold: true
+            fieldConfig:
+              defaults: {}
+              overrides: []
+        transparent: true
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: Outgoing traffic
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: metricDate
+                      dateLoading: false
+                      dateTimeColDataType: metricDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        $columns(
+                            host c,
+                            sum(bits_outgoing) length)
+                        FROM $table
+                        WHERE host in (
+                            SELECT host
+                            FROM
+                        (
+                                SELECT
+                                    host,
+                                    sum(bits_outgoing) as length
+                                FROM $table
+                                WHERE $timeFilter and isIPAddressInRange(host, '$Network')
+                                GROUP BY host
+                                ORDER BY length DESC
+                                LIMIT 7
+                        ))
+                      rawQuery: >-
+                        SELECT t, groupArray((c, length)) AS groupArr FROM (
+                        SELECT (intDiv(toUInt32(metricDateTime), 1) * 1) * 1000
+                        AS t, host c, sum(bits_outgoing) length FROM
+                        fastnetmon.host_metrics WHERE metricDate >=
+                        toDate(1648080109) AND metricDateTime >=
+                        toDateTime(1648080109) AND host in (     SELECT host    
+                        FROM (         SELECT             host,            
+                        sum(bits_outgoing) as length         FROM
+                        fastnetmon.host_metrics         WHERE metricDate >=
+                        toDate(1648080109) AND metricDateTime >=
+                        toDateTime(1648080109) and isIPAddressInRange(host,
+                        '103.100.92.0/24')         GROUP BY host         ORDER
+                        BY length DESC         LIMIT 7 )) GROUP BY t, c ORDER BY
+                        t, c) GROUP BY t ORDER BY t
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      table: host_metrics
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 9.5.2
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: graph
+                originalOptions:
+                  aliasColors: {}
+                  bars: false
+                  dashLength: 10
+                  dashes: false
+                  fill: 1
+                  fillGradient: 0
+                  hiddenSeries: false
+                  legend:
+                    alignAsTable: true
+                    avg: false
+                    current: true
+                    max: false
+                    min: false
+                    rightSide: true
+                    show: true
+                    sideWidth: 185
+                    sort: current
+                    sortDesc: true
+                    total: false
+                    values: true
+                  lines: true
+                  linewidth: 1
+                  nullPointMode: 'null'
+                  percentage: false
+                  pointradius: 5
+                  points: false
+                  renderer: flot
+                  seriesOverrides:
+                    - alias: /./
+                      transform: negative-Y
+                  spaceLength: 10
+                  stack: false
+                  steppedLine: false
+                  thresholds: []
+                  timeRegions: []
+                  tooltip:
+                    shared: false
+                    sort: 0
+                    value_type: individual
+                  xaxis:
+                    mode: time
+                    show: true
+                    values: []
+                  yaxes:
+                    - format: bps
+                      label: MBPS OUT
+                      logBase: 1
+                      show: true
+                    - format: short
+                      logBase: 1
+                      show: false
+                  yaxis:
+                    align: false
+              alertThreshold: true
+            fieldConfig:
+              defaults: {}
+              overrides: []
+        transparent: true
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: Packets outgoing
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: metricDate
+                      dateLoading: false
+                      dateTimeColDataType: metricDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        $columns(
+                            host c,
+                            sum(packets_outgoing) length)
+                        FROM $table
+                        WHERE host in (
+                            SELECT host
+                            FROM
+                        (
+                                SELECT
+                                    host,
+                                    sum(packets_outgoing) as length
+                                FROM $table
+                                WHERE $timeFilter and isIPAddressInRange(host, '$Network')
+                                GROUP BY host
+                                ORDER BY length DESC
+                                LIMIT 7))
+                      rawQuery: >-
+                        SELECT t, groupArray((c, length)) AS groupArr FROM (
+                        SELECT (intDiv(toUInt32(metricDateTime), 1) * 1) * 1000
+                        AS t, host c, sum(packets_outgoing) length FROM
+                        fastnetmon.host_metrics WHERE metricDate >=
+                        toDate(1648080122) AND metricDateTime >=
+                        toDateTime(1648080122) AND host in (     SELECT host    
+                        FROM (         SELECT             host,            
+                        sum(packets_outgoing) as length         FROM
+                        fastnetmon.host_metrics         WHERE metricDate >=
+                        toDate(1648080122) AND metricDateTime >=
+                        toDateTime(1648080122) and isIPAddressInRange(host,
+                        '103.100.92.0/24')         GROUP BY host         ORDER
+                        BY length DESC         LIMIT 7)) GROUP BY t, c ORDER BY
+                        t, c) GROUP BY t ORDER BY t
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      table: host_metrics
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 9.5.2
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: graph
+                originalOptions:
+                  aliasColors: {}
+                  bars: false
+                  dashLength: 10
+                  dashes: false
+                  fill: 1
+                  fillGradient: 0
+                  hiddenSeries: false
+                  legend:
+                    alignAsTable: true
+                    avg: false
+                    current: true
+                    max: false
+                    min: false
+                    rightSide: true
+                    show: true
+                    sideWidth: 185
+                    sort: current
+                    sortDesc: true
+                    total: false
+                    values: true
+                  lines: true
+                  linewidth: 1
+                  nullPointMode: 'null'
+                  percentage: false
+                  pointradius: 5
+                  points: false
+                  renderer: flot
+                  seriesOverrides:
+                    - alias: /./
+                      transform: negative-Y
+                  spaceLength: 10
+                  stack: false
+                  steppedLine: false
+                  thresholds: []
+                  timeRegions: []
+                  tooltip:
+                    shared: false
+                    sort: 0
+                    value_type: individual
+                  xaxis:
+                    mode: time
+                    show: true
+                    values: []
+                  yaxes:
+                    - format: pps
+                      label: PPS OUT
+                      logBase: 1
+                      show: true
+                    - format: short
+                      logBase: 1
+                      show: false
+                  yaxis:
+                    align: false
+              alertThreshold: true
+            fieldConfig:
+              defaults: {}
+              overrides: []
+        transparent: true
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 6
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 12
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 18
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-4
+  links: []
+  liveNow: false
+  preload: false
+  tags: []
+  timeSettings:
+    from: now-3h
+    to: now
+    autoRefresh: ''
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon Advanced top 10 hosts per network
+  variables:
+    - kind: QueryVariable
+      spec:
+        name: Network
+        current:
+          text: 185.43.248.0/24
+          value: 185.43.248.0/24
+        label: Network
+        hide: dontHide
+        refresh: onDashboardLoad
+        skipUrlSync: false
+        description: Network
+        query:
+          kind: DataQuery
+          group: vertamedia-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fastnetmonclickhousedatasourceuid
+          spec:
+            __legacyStringValue: >-
+              select distinct
+              replaceAll(IPv4NumToStringClassC(IPv4StringToNum(host)),'xxx',
+              '0/24') from fastnetmon.host_metrics  where metricDate = today()
+              order by host
+        regex: ''
+        sort: disabled
+        definition: >-
+          select distinct
+          replaceAll(IPv4NumToStringClassC(IPv4StringToNum(host)),'xxx', '0/24')
+          from fastnetmon.host_metrics  where metricDate = today() order by host
+        options: []
+        multi: false
+        includeAll: false
+        allowCustomValue: true

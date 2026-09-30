@@ -1,0 +1,376 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: dd7f0fcb-2fb5-433f-a2bb-e967e5210c95
+  namespace: default
+  uid: pGhwBVpSW3PCuG107c4nv6iHUYngVPr4FHZBXlyr4XQX
+  resourceVersion: '1790787770525984'
+  generation: 3
+  creationTimestamp: '2023-09-28T11:38:20Z'
+  labels:
+    grafana.app/deprecatedInternalID: '55'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T17:02:50Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana
+          version: v0
+          datasource:
+            name: '-- Grafana --'
+          spec: {}
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+  cursorSync: 'Off'
+  description: Fastnetmon Advanced ClickHouse-top10-networks
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: TOP 10 MBPS
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: metricDate
+                      dateLoading: false
+                      dateTimeColDataType: metricDateTime
+                      datetimeLoading: false
+                      dsType: influxdb
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_network c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> network <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> network<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_network,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> network<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        $columns(
+                            network c,
+                            sum(bits_incoming) length)
+                        FROM $table
+                        WHERE network in (
+                            SELECT network
+                            FROM
+                        (
+                                SELECT
+                                    network,
+                                    sum(bits_incoming) as length
+                                FROM $table
+                                GROUP BY network
+                                ORDER BY length DESC
+                                LIMIT 10
+                        ))
+                      rawQuery: >-
+                        SELECT t, groupArray((c, length)) as groupArr FROM (
+                        SELECT (intDiv(toUInt32(metricDateTime), 1) * 1) * 1000
+                        as t, network c, sum(bits_incoming) length FROM
+                        fastnetmon.network_metrics WHERE metricDate >=
+                        toDate(1507809860) AND metricDateTime >=
+                        toDateTime(1507809860) AND  network in (     SELECT
+                        network     FROM (         SELECT            
+                        network,             sum(bits_incoming) as
+                        length         FROM fastnetmon.network_metrics        
+                        GROUP BY network         ORDER BY length DESC        
+                        LIMIT 10 )) GROUP BY t, c  ORDER BY t) GROUP BY t ORDER
+                        BY t
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      table: network_metrics
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 9.5.2
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: graph
+                originalOptions:
+                  aliasColors: {}
+                  bars: false
+                  dashLength: 10
+                  dashes: false
+                  fill: 1
+                  fillGradient: 0
+                  hiddenSeries: false
+                  legend:
+                    alignAsTable: true
+                    avg: false
+                    current: true
+                    max: true
+                    min: true
+                    show: true
+                    sort: current
+                    sortDesc: true
+                    total: false
+                    values: true
+                  lines: true
+                  linewidth: 1
+                  nullPointMode: 'null'
+                  percentage: false
+                  pointradius: 5
+                  points: false
+                  renderer: flot
+                  seriesOverrides: []
+                  spaceLength: 10
+                  stack: false
+                  steppedLine: false
+                  thresholds: []
+                  timeRegions: []
+                  tooltip:
+                    shared: true
+                    sort: 0
+                    value_type: individual
+                  xaxis:
+                    mode: time
+                    show: false
+                    values: []
+                  yaxes:
+                    - format: bps
+                      logBase: 1
+                      show: true
+                    - format: short
+                      logBase: 1
+                      show: false
+                  yaxis:
+                    align: false
+              alertThreshold: true
+            fieldConfig:
+              defaults: {}
+              overrides: []
+        transparent: true
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: TOP 10 PPS
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      database: fastnetmon
+                      dateColDataType: metricDate
+                      dateLoading: false
+                      dateTimeColDataType: metricDateTime
+                      datetimeLoading: false
+                      dsType: influxdb
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_network c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> network <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> network<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_network,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> network<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        $columns(
+                            network c,
+                            sum(packets_incoming) length)
+                        FROM $table
+                        WHERE network in (
+                            SELECT network
+                            FROM
+                        (
+                                SELECT
+                                    network,
+                                    sum(packets_incoming) as length
+                                FROM $table
+                                GROUP BY network
+                                ORDER BY length DESC
+                                LIMIT 10
+                        ))
+                      rawQuery: >-
+                        SELECT t, groupArray((c, length)) as groupArr FROM (
+                        SELECT (intDiv(toUInt32(metricDateTime), 1) * 1) * 1000
+                        as t, network c, sum(packets_incoming) length FROM
+                        fastnetmon.network_metrics WHERE metricDate >=
+                        toDate(1507809860) AND metricDateTime >=
+                        toDateTime(1507809860) AND  network in (     SELECT
+                        network     FROM (         SELECT            
+                        network,             sum(packets_incoming) as
+                        length         FROM fastnetmon.network_metrics        
+                        GROUP BY network         ORDER BY length DESC        
+                        LIMIT 10 )) GROUP BY t, c  ORDER BY t) GROUP BY t ORDER
+                        BY t
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      table: network_metrics
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 9.5.2
+          spec:
+            options:
+              __angularMigration:
+                autoMigrateFrom: graph
+                originalOptions:
+                  aliasColors: {}
+                  bars: false
+                  dashLength: 10
+                  dashes: false
+                  fill: 1
+                  fillGradient: 0
+                  hiddenSeries: false
+                  legend:
+                    alignAsTable: true
+                    avg: false
+                    current: true
+                    max: true
+                    min: true
+                    show: true
+                    sort: current
+                    sortDesc: true
+                    total: false
+                    values: true
+                  lines: true
+                  linewidth: 1
+                  nullPointMode: 'null'
+                  percentage: false
+                  pointradius: 5
+                  points: false
+                  renderer: flot
+                  seriesOverrides: []
+                  spaceLength: 10
+                  stack: false
+                  steppedLine: false
+                  thresholds: []
+                  timeRegions: []
+                  tooltip:
+                    shared: true
+                    sort: 0
+                    value_type: individual
+                  xaxis:
+                    mode: time
+                    show: true
+                    values: []
+                  yaxes:
+                    - format: pps
+                      logBase: 1
+                      show: true
+                    - format: short
+                      logBase: 1
+                      show: true
+                  yaxis:
+                    align: false
+              alertThreshold: true
+            fieldConfig:
+              defaults: {}
+              overrides: []
+        transparent: true
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 24
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 14
+            width: 24
+            height: 14
+            element:
+              kind: ElementReference
+              name: panel-2
+  links: []
+  liveNow: false
+  preload: false
+  tags: []
+  timeSettings:
+    from: now-1h
+    to: now
+    autoRefresh: 30s
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: Fastnetmon Advanced ClickHouse TOP 10 networks
+  variables: []

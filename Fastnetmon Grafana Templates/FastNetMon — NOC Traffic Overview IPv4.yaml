@@ -1,0 +1,3321 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: fnm-noc-traffic-overview-ipv4-v4
+  namespace: default
+  uid: c8d505a7-1044-49d7-a9d0-47eb153b8a48
+  resourceVersion: '1790791244106982'
+  generation: 10
+  creationTimestamp: '2026-09-30T17:43:35Z'
+  labels:
+    grafana.app/deprecatedInternalID: '2171848797593600'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T18:00:44Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            limit: 100
+            matchAny: false
+            tags: []
+            type: dashboard
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            builderOptions:
+              database: fastnetmon
+              fields:
+                - title
+                - text
+                - eventDateTime
+              filters:
+                - condition: AND
+                  filterType: custom
+                  key: eventDateTime
+                  operator: WITH IN DASHBOARD TIME RANGE
+                  restrictToFields:
+                    - label: eventDateTime
+                      name: eventDateTime
+                      picklistValues: []
+                      type: DateTime
+                  type: datetime
+              limit: 100
+              mode: list
+              orderBy: []
+              table: attack_events
+            queryType: builder
+            rawSql: >-
+              SELECT "title", "text", "eventDateTime" FROM
+              "fastnetmon"."attack_events" WHERE   ( eventDateTime  >=
+              $__fromTime AND eventDateTime <= $__toTime ) LIMIT 100
+            refId: Anno
+        enable: false
+        hide: false
+        iconColor: red
+        name: FastNetMon attacks
+        mappings:
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: eventDateTime
+          title:
+            source: field
+            value: title
+  cursorSync: 'Off'
+  description: >-
+    FastNetMon NOC Traffic Overview IPv4. Includes total traffic,
+    protocol/vector counters, top hosts/ASNs/networks, interface counters and
+    collector health. v4 fixes ClickHouse counter delta type casting and
+    Host/ASN drill-down links.
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: Incoming bandwidth
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT argMax(bits, metricDateTime) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='incoming'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-10:
+      kind: Panel
+      spec:
+        id: 10
+        title: Packet rate — IN / OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avgIf(packets, direction='incoming') AS Incoming,
+                         avgIf(packets, direction='outgoing') AS Outgoing
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND direction IN
+                        ('incoming','outgoing')
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-11:
+      kind: Panel
+      spec:
+        id: 11
+        title: Flows — IN / OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avgIf(flows, direction='incoming') AS Incoming,
+                         avgIf(flows, direction='outgoing') AS Outgoing
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND direction IN
+                        ('incoming','outgoing')
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-12:
+      kind: Panel
+      spec:
+        id: 12
+        title: Average packet size — IN / OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avgIf(if(packets>0,bits/packets/8.0,0.0), direction='incoming') AS Incoming,
+                         avgIf(if(packets>0,bits/packets/8.0,0.0), direction='outgoing') AS Outgoing
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND direction IN
+                        ('incoming','outgoing')
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-13:
+      kind: Panel
+      spec:
+        id: 13
+        title: Incoming protocol mix — bandwidth
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avg(tcp_bits) AS TCP, avg(udp_bits) AS UDP, avg(icmp_bits) AS ICMP,
+                         avg(fragmented_bits) AS Fragmented, avg(tcp_syn_bits) AS TCP_SYN, avg(dropped_bits) AS Dropped
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND
+                        direction='incoming'
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-14:
+      kind: Panel
+      spec:
+        id: 14
+        title: Incoming protocol mix — packets
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avg(tcp_packets) AS TCP, avg(udp_packets) AS UDP, avg(icmp_packets) AS ICMP,
+                         avg(fragmented_packets) AS Fragmented, avg(tcp_syn_packets) AS TCP_SYN, avg(dropped_packets) AS Dropped
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND
+                        direction='incoming'
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-15:
+      kind: Panel
+      spec:
+        id: 15
+        title: Outgoing protocol mix — bandwidth
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avg(tcp_bits) AS TCP, avg(udp_bits) AS UDP, avg(icmp_bits) AS ICMP,
+                         avg(fragmented_bits) AS Fragmented, avg(tcp_syn_bits) AS TCP_SYN, avg(dropped_bits) AS Dropped
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND
+                        direction='outgoing'
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-16:
+      kind: Panel
+      spec:
+        id: 16
+        title: Outgoing protocol mix — packets
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avg(tcp_packets) AS TCP, avg(udp_packets) AS UDP, avg(icmp_packets) AS ICMP,
+                         avg(fragmented_packets) AS Fragmented, avg(tcp_syn_packets) AS TCP_SYN, avg(dropped_packets) AS Dropped
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND
+                        direction='outgoing'
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-17:
+      kind: Panel
+      spec:
+        id: 17
+        title: Top hosts — bandwidth
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT host AS Host,
+                         max(bits_incoming) AS `Peak IN bps`, max(bits_outgoing) AS `Peak OUT bps`,
+                         avg(bits_incoming) AS `Avg IN bps`, avg(bits_outgoing) AS `Avg OUT bps`
+                        FROM fastnetmon.host_metrics_ipv4_top
+                        WHERE $__timeFilter(metricDateTime)
+                        GROUP BY host
+                        ORDER BY greatest(`Peak IN bps`, `Peak OUT bps`) DESC
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 13.1.1
+          spec:
+            options:
+              cellHeight: sm
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Peak IN bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Peak OUT bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Avg IN bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Avg OUT bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Host
+                  properties:
+                    - id: links
+                      value:
+                        - targetBlank: false
+                          title: Open Host Inspector
+                          url: >-
+                            /d/fnm-noc-traffic-overview-ipv4-v4/fastnetmon-e28094-noc-traffic-overview-ipv4?var-host=${__data.fields["Host"]}&from=${__from}&to=${__to}
+    panel-18:
+      kind: Panel
+      spec:
+        id: 18
+        title: Top hosts — packet rate
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT host AS Host,
+                         max(packets_incoming) AS `Peak IN pps`, max(packets_outgoing) AS `Peak OUT pps`,
+                         avg(packets_incoming) AS `Avg IN pps`, avg(packets_outgoing) AS `Avg OUT pps`
+                        FROM fastnetmon.host_metrics_ipv4_top
+                        WHERE $__timeFilter(metricDateTime)
+                        GROUP BY host
+                        ORDER BY greatest(`Peak IN pps`, `Peak OUT pps`) DESC
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 13.1.1
+          spec:
+            options:
+              cellHeight: sm
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Peak IN pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Peak OUT pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Avg IN pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Avg OUT pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Host
+                  properties:
+                    - id: links
+                      value:
+                        - targetBlank: false
+                          title: Open Host Inspector
+                          url: >-
+                            /d/fnm-noc-traffic-overview-ipv4-v4/fastnetmon-e28094-noc-traffic-overview-ipv4?var-host=${__data.fields["Host"]}&from=${__from}&to=${__to}
+    panel-19:
+      kind: Panel
+      spec:
+        id: 19
+        title: Top hosts — flow rate
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT host AS Host,
+                         max(flows_incoming) AS `Peak IN flows/s`, max(flows_outgoing) AS `Peak OUT flows/s`,
+                         avg(flows_incoming) AS `Avg IN flows/s`, avg(flows_outgoing) AS `Avg OUT flows/s`
+                        FROM fastnetmon.host_metrics_ipv4_top
+
+                        WHERE $__timeFilter(metricDateTime)
+
+                        GROUP BY host
+
+                        ORDER BY greatest(`Peak IN flows/s`, `Peak OUT flows/s`)
+                        DESC
+
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 13.1.1
+          spec:
+            options:
+              cellHeight: sm
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Peak IN flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: Peak OUT flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: Avg IN flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: Avg OUT flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: Host
+                  properties:
+                    - id: links
+                      value:
+                        - targetBlank: false
+                          title: Open Host Inspector
+                          url: >-
+                            /d/fnm-noc-traffic-overview-ipv4-v4/fastnetmon-e28094-noc-traffic-overview-ipv4?var-host=${__data.fields["Host"]}&from=${__from}&to=${__to}
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: Outgoing bandwidth
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT argMax(bits, metricDateTime) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='outgoing'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-20:
+      kind: Panel
+      spec:
+        id: 20
+        title: Top remote ASNs — IN / OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT
+                         asn_number AS ASN,
+                         dictGetOrDefault('fastnetmon.asn_information','asn_name',asn_number,'Unknown') AS Name,
+                         max(bits_incoming) AS `Peak IN bps`, max(bits_outgoing) AS `Peak OUT bps`,
+                         max(packets_incoming) AS `Peak IN pps`, max(packets_outgoing) AS `Peak OUT pps`,
+                         max(flows_incoming) AS `Peak IN flows/s`, max(flows_outgoing) AS `Peak OUT flows/s`
+                        FROM fastnetmon.asn_metrics_ipv4_top
+                        WHERE $__timeFilter(metricDateTime)
+                        GROUP BY asn_number
+                        ORDER BY greatest(`Peak IN bps`, `Peak OUT bps`) DESC
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 13.1.1
+          spec:
+            options:
+              cellHeight: sm
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Peak IN bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Peak OUT bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Peak IN pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Peak OUT pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Peak IN flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: Peak OUT flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: ASN
+                  properties:
+                    - id: links
+                      value:
+                        - targetBlank: false
+                          title: Open ASN Inspector
+                          url: >-
+                            /d/fnm-asn-inspector/fastnetmon-e28094-asn-inspector?var-asn=${__data.fields["ASN"]}&from=${__from}&to=${__to}
+    panel-21:
+      kind: Panel
+      spec:
+        id: 21
+        title: Top monitored networks — IN / OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT network AS Network,
+                         max(bits_incoming) AS `Peak IN bps`, max(bits_outgoing) AS `Peak OUT bps`,
+                         max(packets_incoming) AS `Peak IN pps`, max(packets_outgoing) AS `Peak OUT pps`
+                        FROM fastnetmon.network_metrics
+                        WHERE $__timeFilter(metricDateTime)
+                        GROUP BY network
+                        ORDER BY greatest(`Peak IN bps`, `Peak OUT bps`) DESC
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 13.1.1
+          spec:
+            options:
+              cellHeight: sm
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Peak IN bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Peak OUT bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: Peak IN pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: Peak OUT pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    scope: series
+                    options: Network
+                  properties:
+                    - id: links
+                      value:
+                        - title: Open Advanced top 10 hosts per network
+                          url: >-
+                            /d/gFt_deEnk/fastnetmon-advanced-top-10-hosts-per-network?var-Network=${__data.fields["Network"]}&from=${__from}&to=${__to}
+    panel-22:
+      kind: Panel
+      spec:
+        id: 22
+        title: Interfaces — current counters
+        description: >-
+          Latest FastNetMon interface counters. If interface_name is
+          unavailable, the label is router IP / ifIndex.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT
+                         if(interface_name = '', concat(device_ip, ' / if', toString(interface_id)), concat(device_ip, ' / ', interface_name, ' (if', toString(interface_id), ')')) AS Interface,
+                         argMax(bits_incoming, metricDateTime) AS `IN bps`,
+                         argMax(bits_outgoing, metricDateTime) AS `OUT bps`,
+                         argMax(packets_incoming, metricDateTime) AS `IN pps`,
+                         argMax(packets_outgoing, metricDateTime) AS `OUT pps`,
+                         argMax(flows_incoming, metricDateTime) AS `IN flows/s`,
+                         argMax(flows_outgoing, metricDateTime) AS `OUT flows/s`
+                        FROM fastnetmon.interface_metrics
+
+                        WHERE metricDateTime >= now() - INTERVAL 30 SECOND AND
+                        ('${router}' = 'all' OR device_ip = '${router}')
+
+                        GROUP BY device_ip, interface_id, interface_name
+
+                        ORDER BY greatest(`IN bps`, `OUT bps`) DESC
+
+                        LIMIT 30
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 13.1.1
+          spec:
+            options:
+              cellHeight: sm
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: IN bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: OUT bps
+                  properties:
+                    - id: unit
+                      value: bps
+                - matcher:
+                    id: byName
+                    options: IN pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: OUT pps
+                  properties:
+                    - id: unit
+                      value: pps
+                - matcher:
+                    id: byName
+                    options: IN flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+                - matcher:
+                    id: byName
+                    options: OUT flows/s
+                  properties:
+                    - id: unit
+                      value: cps
+    panel-23:
+      kind: Panel
+      spec:
+        id: 23
+        title: Top interfaces — total bandwidth
+        description: >-
+          Top 10 interfaces by average IN+OUT bandwidth in the selected time
+          range.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        WITH top_interfaces AS (
+                         SELECT device_ip, interface_id
+                         FROM fastnetmon.interface_metrics
+                         WHERE $__timeFilter(metricDateTime) AND ('${router}' = 'all' OR device_ip = '${router}')
+                         GROUP BY device_ip, interface_id
+                         ORDER BY avg(bits_incoming + bits_outgoing) DESC
+                         LIMIT 10
+                        )
+
+                        SELECT
+                         toStartOfInterval(metricDateTime, INTERVAL 5 SECOND) AS time,
+                         if(interface_name = '', concat(device_ip, ' / if', toString(interface_id)), concat(device_ip, ' / ', interface_name, ' (if', toString(interface_id), ')')) AS Interface,
+                         avg(bits_incoming + bits_outgoing) AS `Bandwidth`
+                        FROM fastnetmon.interface_metrics
+
+                        WHERE $__timeFilter(metricDateTime) AND ('${router}' =
+                        'all' OR device_ip = '${router}')
+                          AND (device_ip, interface_id) IN top_interfaces
+                        GROUP BY time, device_ip, interface_id, interface_name
+
+                        ORDER BY time ASC
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-24:
+      kind: Panel
+      spec:
+        id: 24
+        title: Top interfaces — total packet rate
+        description: >-
+          Top 10 interfaces by average IN+OUT packet rate in the selected time
+          range.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        WITH top_interfaces AS (
+                         SELECT device_ip, interface_id
+                         FROM fastnetmon.interface_metrics
+                         WHERE $__timeFilter(metricDateTime) AND ('${router}' = 'all' OR device_ip = '${router}')
+                         GROUP BY device_ip, interface_id
+                         ORDER BY avg(packets_incoming + packets_outgoing) DESC
+                         LIMIT 10
+                        )
+
+                        SELECT
+                         toStartOfInterval(metricDateTime, INTERVAL 5 SECOND) AS time,
+                         if(interface_name = '', concat(device_ip, ' / if', toString(interface_id)), concat(device_ip, ' / ', interface_name, ' (if', toString(interface_id), ')')) AS Interface,
+                         avg(packets_incoming + packets_outgoing) AS `PPS`
+                        FROM fastnetmon.interface_metrics
+
+                        WHERE $__timeFilter(metricDateTime) AND ('${router}' =
+                        'all' OR device_ip = '${router}')
+                          AND (device_ip, interface_id) IN top_interfaces
+                        GROUP BY time, device_ip, interface_id, interface_name
+
+                        ORDER BY time ASC
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-25:
+      kind: Panel
+      spec:
+        id: 25
+        title: Top interfaces — total flow rate
+        description: >-
+          Top 10 interfaces by average IN+OUT flow rate in the selected time
+          range.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        WITH top_interfaces AS (
+                         SELECT device_ip, interface_id
+                         FROM fastnetmon.interface_metrics
+                         WHERE $__timeFilter(metricDateTime) AND ('${router}' = 'all' OR device_ip = '${router}')
+                         GROUP BY device_ip, interface_id
+                         ORDER BY avg(flows_incoming + flows_outgoing) DESC
+                         LIMIT 10
+                        )
+
+                        SELECT
+                         toStartOfInterval(metricDateTime, INTERVAL 5 SECOND) AS time,
+                         if(interface_name = '', concat(device_ip, ' / if', toString(interface_id)), concat(device_ip, ' / ', interface_name, ' (if', toString(interface_id), ')')) AS Interface,
+                         avg(flows_incoming + flows_outgoing) AS `Flows/s`
+                        FROM fastnetmon.interface_metrics
+
+                        WHERE $__timeFilter(metricDateTime) AND ('${router}' =
+                        'all' OR device_ip = '${router}')
+                          AND (device_ip, interface_id) IN top_interfaces
+                        GROUP BY time, device_ip, interface_id, interface_name
+
+                        ORDER BY time ASC
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-26:
+      kind: Panel
+      spec:
+        id: 26
+        title: Metrics data age
+        description: Age of the newest IPv4 total_metrics sample.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT dateDiff('second', max(metricDateTime), now()) AS
+                        value FROM fastnetmon.total_metrics_ipv4 WHERE
+                        metricDateTime >= now() - INTERVAL 1 DAY
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: s
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 15
+                      color: yellow
+                    - value: 30
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-27:
+      kind: Panel
+      spec:
+        id: 27
+        title: NetFlow UDP drops — Δ5m
+        description: >-
+          Increase of FastNetMon NetFlow/IPFIX UDP receive drops during the last
+          5 minutes.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                         SELECT name,
+                                argMin(value, metricDateTime) AS first_value,
+                                argMax(value, metricDateTime) AS last_value
+                         FROM fastnetmon.system_metrics
+                         WHERE metricDateTime >= now() - INTERVAL 5 MINUTE AND name IN ('netflow_ipfix_udp_packet_drops')
+                         GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-28:
+      kind: Panel
+      spec:
+        id: 28
+        title: Unknown templates — Δ5m
+        description: >-
+          NetFlow v9 + IPFIX packets with unknown templates during the last 5
+          minutes.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                         SELECT name,
+                                argMin(value, metricDateTime) AS first_value,
+                                argMax(value, metricDateTime) AS last_value
+                         FROM fastnetmon.system_metrics
+                         WHERE metricDateTime >= now() - INTERVAL 5 MINUTE AND name IN ('netflow_v9_packets_with_unknown_templates','ipfix_packets_with_unknown_templates')
+                         GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-29:
+      kind: Panel
+      spec:
+        id: 29
+        title: ClickHouse write failures — Δ5m
+        description: FastNetMon ClickHouse metric write failures during the last 5 minutes.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                         SELECT name,
+                                argMin(value, metricDateTime) AS first_value,
+                                argMax(value, metricDateTime) AS last_value
+                         FROM fastnetmon.system_metrics
+                         WHERE metricDateTime >= now() - INTERVAL 5 MINUTE AND name IN ('clickhouse_metrics_writes_failed')
+                         GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: Incoming packet rate
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT argMax(packets, metricDateTime) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='incoming'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-30:
+      kind: Panel
+      spec:
+        id: 30
+        title: Traffic DB errors — Δ5m
+        description: FastNetMon traffic persistence errors during the last 5 minutes.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT sum(if(last_value >= first_value,
+                        toInt128(last_value) - toInt128(first_value),
+                        toInt128(last_value))) AS value
+
+                        FROM (
+                         SELECT name,
+                                argMin(value, metricDateTime) AS first_value,
+                                argMax(value, metricDateTime) AS last_value
+                         FROM fastnetmon.system_metrics
+                         WHERE metricDateTime >= now() - INTERVAL 5 MINUTE AND name IN ('traffic_db_errors')
+                         GROUP BY name
+                        )
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: short
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 1
+                      color: red
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: Outgoing packet rate
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT argMax(packets, metricDateTime) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='outgoing'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-5:
+      kind: Panel
+      spec:
+        id: 5
+        title: Incoming flows/s
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT argMax(flows, metricDateTime) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='incoming'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-6:
+      kind: Panel
+      spec:
+        id: 6
+        title: Outgoing flows/s
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT argMax(flows, metricDateTime) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='outgoing'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-7:
+      kind: Panel
+      spec:
+        id: 7
+        title: Average packet size IN
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT if(argMax(packets, metricDateTime)>0,
+                        argMax(bits, metricDateTime)/argMax(packets,
+                        metricDateTime)/8.0, 0) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='incoming'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-8:
+      kind: Panel
+      spec:
+        id: 8
+        title: Average packet size OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: >-
+                        SELECT if(argMax(packets, metricDateTime)>0,
+                        argMax(bits, metricDateTime)/argMax(packets,
+                        metricDateTime)/8.0, 0) AS value FROM
+                        fastnetmon.total_metrics_ipv4 WHERE
+                        $__timeFilter(metricDateTime) AND direction='outgoing'
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: stat
+          version: 13.1.1
+          spec:
+            options:
+              colorMode: value
+              graphMode: none
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: thresholds
+              overrides: []
+    panel-9:
+      kind: Panel
+      spec:
+        id: 9
+        title: Bandwidth — IN / OUT
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time,
+                         avgIf(bits, direction='incoming') AS Incoming,
+                         avgIf(bits, direction='outgoing') AS Outgoing
+                        FROM fastnetmon.total_metrics_ipv4
+
+                        WHERE $__timeFilter(metricDateTime) AND direction IN
+                        ('incoming','outgoing')
+
+                        GROUP BY time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 13.1.1
+          spec:
+            options:
+              annotations:
+                clustering: -1
+                multiLane: false
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                displayMode: table
+                enableFacetedFilter: false
+                overflow: ellipsis
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 6
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 18
+            'y': 0
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-4
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-5
+        - kind: GridLayoutItem
+          spec:
+            x: 6
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-6
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-7
+        - kind: GridLayoutItem
+          spec:
+            x: 18
+            'y': 5
+            width: 6
+            height: 5
+            element:
+              kind: ElementReference
+              name: panel-8
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 10
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-9
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 10
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-10
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 19
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-11
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 19
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-12
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 28
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-13
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 28
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-14
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 37
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-15
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 37
+            width: 12
+            height: 9
+            element:
+              kind: ElementReference
+              name: panel-16
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 46
+            width: 8
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-17
+        - kind: GridLayoutItem
+          spec:
+            x: 8
+            'y': 46
+            width: 8
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-18
+        - kind: GridLayoutItem
+          spec:
+            x: 16
+            'y': 46
+            width: 8
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-19
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 57
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-20
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 57
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-21
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 68
+            width: 24
+            height: 12
+            element:
+              kind: ElementReference
+              name: panel-22
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 80
+            width: 8
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-23
+        - kind: GridLayoutItem
+          spec:
+            x: 8
+            'y': 80
+            width: 8
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-24
+        - kind: GridLayoutItem
+          spec:
+            x: 16
+            'y': 80
+            width: 8
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-25
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 91
+            width: 5
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-26
+        - kind: GridLayoutItem
+          spec:
+            x: 5
+            'y': 91
+            width: 5
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-27
+        - kind: GridLayoutItem
+          spec:
+            x: 10
+            'y': 91
+            width: 5
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-28
+        - kind: GridLayoutItem
+          spec:
+            x: 15
+            'y': 91
+            width: 5
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-29
+        - kind: GridLayoutItem
+          spec:
+            x: 20
+            'y': 91
+            width: 4
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-30
+  links: []
+  liveNow: false
+  preload: false
+  tags:
+    - fastnetmon
+    - clickhouse
+    - ddos
+    - traffic-analysis
+  timeSettings:
+    timezone: browser
+    from: now-15m
+    to: now
+    autoRefresh: 5s
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon — NOC Traffic Overview IPv4
+  variables:
+    - kind: QueryVariable
+      spec:
+        name: router
+        current:
+          text: All
+          value: $__all
+        label: Interface router
+        hide: dontHide
+        refresh: onDashboardLoad
+        skipUrlSync: false
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            __legacyStringValue: >-
+              SELECT DISTINCT device_ip FROM fastnetmon.interface_metrics WHERE
+              device_ip != '' ORDER BY device_ip
+        regex: ''
+        regexApplyTo: value
+        sort: alphabeticalAsc
+        definition: >-
+          SELECT DISTINCT device_ip FROM fastnetmon.interface_metrics WHERE
+          device_ip != '' ORDER BY device_ip
+        options: []
+        multi: false
+        includeAll: true
+        allValue: all
+        allowCustomValue: true

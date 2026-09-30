@@ -1,0 +1,894 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: paw8crb
+  namespace: default
+  uid: yrzaRh3So2lNaCx1k6ukHPhj8rCCTKRUzFFZtjRIyyoX
+  resourceVersion: '1790787313893015'
+  generation: 32
+  creationTimestamp: '2026-05-19T12:57:16Z'
+  labels:
+    grafana.app/deprecatedInternalID: '79'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/updatedBy: user:u000000002
+    grafana.app/updatedTimestamp: '2026-09-30T16:55:13Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: datasource
+          version: v0
+          datasource:
+            name: grafana
+          spec: {}
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+  cursorSync: 'Off'
+  description: FastNetMon Advanced TOP 10 ASNs for specified ASn Manual
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: Incoming traffic
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      add_metadata: true
+                      database: fastnetmon
+                      dateColDataType: packetDate
+                      dateLoading: false
+                      dateTimeColDataType: packetDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      editorMode: builder
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        SELECT
+                            $timeSeries as time,
+                            srcAsn,
+                            sum(length * sampleRatio * 8) as bps
+                        FROM $table
+                        WHERE $timeFilter
+                          AND dstAsn = $AS
+                          $conditionalTest(AND inputInterface IN ($interface), $interface)
+                          AND srcAsn IN (
+                            SELECT srcAsn
+                            FROM (
+                                SELECT
+                                    srcAsn,
+                                    sum(length * sampleRatio * 8) as length
+                                FROM $table
+                                WHERE $timeFilter 
+                                  AND dstAsn = $AS
+                                  $conditionalTest(AND inputInterface IN ($interface), $interface)
+                                GROUP BY srcAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, srcAsn
+                        ORDER BY time
+                      rawQuery: >-
+                        /* grafana dashboard=FastNetMon Advanced TOP 10 ASNs for
+                        specified ASn Copy, user=2 */
+
+                        SELECT
+                            (intDiv(toUInt32(packetDateTime), 1) * 1) * 1000 as time,
+                            srcAsn,
+                            sum(length * sampleRatio * 8) as bps
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate(1779198527) AND packetDate <=
+                        toDate(1779198827) AND packetDateTime >=
+                        toDateTime(1779198527) AND packetDateTime <=
+                        toDateTime(1779198827)
+                          AND dstAsn = 62206
+                          AND ('all' IN (814) OR inputInterface IN (814))
+                          AND srcAsn IN (
+                            SELECT srcAsn
+                            FROM (
+                                SELECT
+                                    srcAsn,
+                                    sum(length * sampleRatio * 8) as length
+                                FROM fastnetmon.traffic
+                                WHERE packetDate >= toDate(1779198527) AND packetDate <= toDate(1779198827) AND packetDateTime >= toDateTime(1779198527) AND packetDateTime <= toDateTime(1779198827) 
+                                  AND dstAsn = 62206
+                                  AND ('all' IN (814) OR inputInterface IN (814))
+                                GROUP BY srcAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, srcAsn
+
+                        ORDER BY time
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      showFormattedSQL: false
+                      skip_comments: true
+                      table: traffic
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.3.1
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - mean
+                displayMode: table
+                placement: right
+                showLegend: true
+                width: 250
+              tooltip:
+                hideZeros: false
+                maxHeight: 600
+                mode: single
+                sort: none
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 80
+                      color: red
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: MBPS IN
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 10
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 5
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: false
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides:
+                - matcher:
+                    id: byType
+                    options: time
+                  properties:
+                    - id: custom.axisPlacement
+                      value: hidden
+        transparent: true
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: Packets incoming
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      add_metadata: true
+                      database: fastnetmon
+                      dateColDataType: packetDate
+                      dateLoading: false
+                      dateTimeColDataType: packetDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      editorMode: builder
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        SELECT
+                            $timeSeries as time,
+                            srcAsn,
+                            sum(numberOfPackets * sampleRatio) as pps
+                        FROM $table
+                        WHERE $timeFilter
+                          AND dstAsn = $AS
+                          $conditionalTest(AND inputInterface IN ($interface), $interface)
+                          AND srcAsn IN (
+                            SELECT srcAsn
+                            FROM (
+                                SELECT
+                                    srcAsn,
+                                    sum(numberOfPackets * sampleRatio) as length
+                                FROM $table
+                                WHERE $timeFilter 
+                                  AND dstAsn = $AS
+                                  $conditionalTest(AND inputInterface IN ($interface), $interface)
+                                GROUP BY srcAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, srcAsn
+                        ORDER BY time
+                      rawQuery: >-
+                        /* grafana dashboard=FastNetMon Advanced TOP 10 ASNs for
+                        specified ASn Copy, user=2 */
+
+                        SELECT
+                            (intDiv(toUInt32(packetDateTime), 1) * 1) * 1000 as time,
+                            srcAsn,
+                            sum(numberOfPackets * sampleRatio) as pps
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate(1779198913) AND packetDate <=
+                        toDate(1779199213) AND packetDateTime >=
+                        toDateTime(1779198913) AND packetDateTime <=
+                        toDateTime(1779199213)
+                          AND dstAsn = 208241
+                          AND srcAsn IN (
+                            SELECT srcAsn
+                            FROM (
+                                SELECT
+                                    srcAsn,
+                                    sum(numberOfPackets * sampleRatio) as length
+                                FROM fastnetmon.traffic
+                                WHERE packetDate >= toDate(1779198913) AND packetDate <= toDate(1779199213) AND packetDateTime >= toDateTime(1779198913) AND packetDateTime <= toDateTime(1779199213) 
+                                  AND dstAsn = 208241
+                                GROUP BY srcAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, srcAsn
+
+                        ORDER BY time
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      skip_comments: true
+                      table: traffic
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.3.1
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                displayMode: table
+                placement: right
+                showLegend: true
+                width: 200
+              tooltip:
+                hideZeros: false
+                maxHeight: 600
+                mode: single
+                sort: none
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 80
+                      color: red
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: PPS IN
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 10
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 5
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: false
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides:
+                - matcher:
+                    id: byType
+                    options: time
+                  properties:
+                    - id: custom.axisPlacement
+                      value: hidden
+        transparent: true
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: Outgoing traffic
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      add_metadata: true
+                      database: fastnetmon
+                      dateColDataType: packetDate
+                      dateLoading: false
+                      dateTimeColDataType: packetDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      editorMode: builder
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(bits_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        SELECT
+                            $timeSeries as time,
+                            dstAsn,
+                            sum(length * sampleRatio * 8) as bps
+                        FROM $table
+                        WHERE $timeFilter
+                          AND srcAsn = $AS
+                          $conditionalTest(AND outputInterface IN ($interface), $interface)
+                          AND dstAsn IN (
+                            SELECT dstAsn
+                            FROM (
+                                SELECT
+                                    dstAsn,
+                                    sum(length * sampleRatio * 8) as length
+                                FROM $table
+                                WHERE $timeFilter 
+                                  AND srcAsn = $AS
+                                  $conditionalTest(AND outputInterface IN ($interface), $interface)
+                                GROUP BY dstAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, dstAsn
+                        ORDER BY time
+                      rawQuery: >-
+                        /* grafana dashboard=FastNetMon Advanced TOP 10 ASNs for
+                        specified ASn Copy, user=2 */
+
+                        SELECT
+                            (intDiv(toUInt32(packetDateTime), 1) * 1) * 1000 as time,
+                            dstAsn,
+                            sum(length * sampleRatio * 8) as bps
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate(1779198527) AND packetDate <=
+                        toDate(1779198827) AND packetDateTime >=
+                        toDateTime(1779198527) AND packetDateTime <=
+                        toDateTime(1779198827)
+                          AND srcAsn = 62206
+                          AND dstAsn IN (
+                            SELECT dstAsn
+                            FROM (
+                                SELECT
+                                    dstAsn,
+                                    sum(length * sampleRatio * 8) as length
+                                FROM fastnetmon.traffic
+                                WHERE packetDate >= toDate(1779198527) AND packetDate <= toDate(1779198827) AND packetDateTime >= toDateTime(1779198527) AND packetDateTime <= toDateTime(1779198827) 
+                                  AND srcAsn = 62206
+                                GROUP BY dstAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, dstAsn
+
+                        ORDER BY time
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      skip_comments: true
+                      table: traffic
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.3.1
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - mean
+                displayMode: table
+                placement: right
+                showLegend: true
+                width: 250
+              tooltip:
+                hideZeros: false
+                maxHeight: 600
+                mode: single
+                sort: none
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 80
+                      color: red
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: MBPS OUT
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 10
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 5
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: false
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides:
+                - matcher:
+                    id: byRegexp
+                    options: /./
+                  properties:
+                    - id: custom.transform
+                      value: negative-Y
+        transparent: true
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: Packets outgoing
+        description: ''
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: vertamedia-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fastnetmonclickhousedatasourceuid
+                    spec:
+                      add_metadata: true
+                      database: fastnetmon
+                      dateColDataType: packetDate
+                      dateLoading: false
+                      dateTimeColDataType: packetDateTime
+                      dateTimeType: DATETIME
+                      datetimeLoading: false
+                      dsType: influxdb
+                      editorMode: builder
+                      extrapolate: true
+                      format: time_series
+                      formattedQuery: "<font color=\"darkcyan\">$columns</font>(<br />\_\_\_\_host c,<br />\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"navajowhite\">length</font>)<br /><font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br /><font color=\"darkorange\">WHERE</font> host <font color=\"darkorange\">in</font> (<br />\_\_\_\_<font color=\"darkorange\">SELECT</font> host<br />\_\_\_\_<font color=\"darkorange\">FROM</font><br />(<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">SELECT</font><br />\_\_\_\_\_\_\_\_\_\_\_\_host,<br />\_\_\_\_\_\_\_\_\_\_\_\_<font color=\"navajowhite\">sum</font>(packets_incoming) <font color=\"darkorange\">as</font> <font color=\"navajowhite\">length</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">FROM</font> <font color=\"darkcyan\">$table</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">GROUP BY</font> host<br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">ORDER BY</font> <font color=\"navajowhite\">length</font> <font color=\"darkorange\">DESC</font><br />\_\_\_\_\_\_\_\_<font color=\"darkorange\">LIMIT</font> <font color=\"cornflowerblue\">10</font><br />))"
+                      groupBy:
+                        - params:
+                            - $__interval
+                          type: time
+                        - params:
+                            - 'null'
+                          type: fill
+                      interval: 1s
+                      intervalFactor: 1
+                      orderByTime: ASC
+                      policy: default
+                      query: |-
+                        SELECT
+                            $timeSeries as time,
+                            dstAsn,
+                            sum(numberOfPackets * sampleRatio) as pps
+                        FROM $table
+                        WHERE $timeFilter
+                          AND srcAsn = $AS
+                          $conditionalTest(AND outputInterface IN ($interface), $interface)
+                          AND dstAsn IN (
+                            SELECT dstAsn
+                            FROM (
+                                SELECT
+                                    dstAsn,
+                                    sum(numberOfPackets * sampleRatio) as length
+                                FROM $table
+                                WHERE $timeFilter 
+                                  AND srcAsn = $AS
+                                  $conditionalTest(AND outputInterface IN ($interface), $interface)
+                                GROUP BY dstAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, dstAsn
+                        ORDER BY time
+                      rawQuery: >-
+                        /* grafana dashboard=FastNetMon Advanced TOP 10 ASNs for
+                        specified ASn Copy, user=2 */
+
+                        SELECT
+                            (intDiv(toUInt32(packetDateTime), 1) * 1) * 1000 as time,
+                            dstAsn,
+                            sum(numberOfPackets * sampleRatio) as pps
+                        FROM fastnetmon.traffic
+
+                        WHERE packetDate >= toDate(1779198913) AND packetDate <=
+                        toDate(1779199213) AND packetDateTime >=
+                        toDateTime(1779198913) AND packetDateTime <=
+                        toDateTime(1779199213)
+                          AND srcAsn = 208241
+                          AND dstAsn IN (
+                            SELECT dstAsn
+                            FROM (
+                                SELECT
+                                    dstAsn,
+                                    sum(numberOfPackets * sampleRatio) as length
+                                FROM fastnetmon.traffic
+                                WHERE packetDate >= toDate(1779198913) AND packetDate <= toDate(1779199213) AND packetDateTime >= toDateTime(1779198913) AND packetDateTime <= toDateTime(1779199213) 
+                                  AND srcAsn = 208241
+                                GROUP BY dstAsn
+                                ORDER BY length DESC
+                                LIMIT 10
+                            )
+                          )
+                        GROUP BY time, dstAsn
+
+                        ORDER BY time
+                      resultFormat: time_series
+                      round: 0s
+                      select:
+                        - - params:
+                              - value
+                            type: field
+                          - params: []
+                            type: mean
+                      skip_comments: true
+                      table: traffic
+                      tableLoading: false
+                      tags: []
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.3.1
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                displayMode: table
+                placement: right
+                showLegend: true
+                width: 185
+              tooltip:
+                hideZeros: false
+                maxHeight: 600
+                mode: single
+                sort: none
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: 0
+                      color: green
+                    - value: 80
+                      color: red
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: PPS OUT
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 10
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 5
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: false
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides:
+                - matcher:
+                    id: byRegexp
+                    options: /./
+                  properties:
+                    - id: custom.transform
+                      value: negative-Y
+        transparent: true
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 6
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 12
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 18
+            width: 24
+            height: 6
+            element:
+              kind: ElementReference
+              name: panel-4
+  links: []
+  liveNow: false
+  preload: false
+  tags: []
+  timeSettings:
+    from: now-1h
+    to: now
+    autoRefresh: ''
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon Advanced TOP 10 ASNs for specified ASn Manual
+  variables:
+    - kind: CustomVariable
+      spec:
+        name: AS
+        query: '62206'
+        current:
+          text: '208241'
+          value: '208241'
+        options:
+          - selected: false
+            text: '0'
+            value: '0'
+        multi: false
+        includeAll: false
+        label: AS
+        hide: dontHide
+        skipUrlSync: false
+        allowCustomValue: true
+    - kind: QueryVariable
+      spec:
+        name: interface
+        current:
+          text: All
+          value: $__all
+        label: Interface
+        hide: dontHide
+        refresh: onDashboardLoad
+        skipUrlSync: false
+        query:
+          kind: DataQuery
+          group: vertamedia-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fastnetmonclickhousedatasourceuid
+          spec:
+            __legacyStringValue: |-
+              SELECT DISTINCT inputInterface FROM fastnetmon.traffic 
+              UNION DISTINCT 
+              SELECT DISTINCT outputInterface FROM  fastnetmon.traffic 
+        regex: ''
+        sort: alphabeticalAsc
+        definition: |-
+          SELECT DISTINCT inputInterface FROM fastnetmon.traffic 
+          UNION DISTINCT 
+          SELECT DISTINCT outputInterface FROM  fastnetmon.traffic 
+        options: []
+        multi: false
+        includeAll: true
+        allValue: all
+        allowCustomValue: true

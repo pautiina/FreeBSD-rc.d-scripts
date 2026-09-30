@@ -1,0 +1,1180 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: fnm-top-hosts-modern
+  namespace: default
+  uid: 37a2930f-8a9b-44c6-8244-07fd3b071396
+  resourceVersion: '1790786478731019'
+  generation: 1
+  creationTimestamp: '2026-09-30T16:41:18Z'
+  labels:
+    grafana.app/deprecatedInternalID: '2156175350439936'
+  annotations:
+    grafana.app/createdBy: user:u000000002
+    grafana.app/folder: afzsq81y9hzpcd
+    grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            limit: 100
+            matchAny: false
+            tags: []
+            type: dashboard
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        builtIn: true
+        legacyOptions:
+          type: dashboard
+    - kind: AnnotationQuery
+      spec:
+        query:
+          kind: DataQuery
+          group: grafana-clickhouse-datasource
+          version: v0
+          datasource:
+            name: fnm-clickhouse-datasource-uid
+          spec:
+            builderOptions:
+              database: fastnetmon
+              fields:
+                - title
+                - text
+                - eventDateTime
+              filters:
+                - condition: AND
+                  filterType: custom
+                  key: eventDateTime
+                  operator: WITH IN DASHBOARD TIME RANGE
+                  restrictToFields:
+                    - label: eventDateTime
+                      name: eventDateTime
+                      picklistValues: []
+                      type: DateTime
+                  type: datetime
+              limit: 100
+              mode: list
+              orderBy: []
+              table: attack_events
+            queryType: builder
+            rawSql: >-
+              SELECT "title", "text", "eventDateTime" FROM
+              "fastnetmon"."attack_events" WHERE   ( eventDateTime  >=
+              $__fromTime AND eventDateTime <= $__toTime ) LIMIT 100
+            refId: Anno
+        enable: false
+        hide: false
+        iconColor: red
+        name: FastNetMon attacks
+        mappings:
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: eventDateTime
+          title:
+            source: field
+            value: title
+  cursorSync: 'Off'
+  description: >-
+    Modern Top Hosts using precomputed *_top metrics with protocol/vector
+    selection, total flows and average packet size.
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        id: 1
+        title: Incoming bandwidth
+        description: Top 10 hosts by selected incoming traffic type.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(multiIf('${protocol}'='total',bits_incoming,'${protocol}'='tcp',tcp_bits_incoming,'${protocol}'='udp',udp_bits_incoming,'${protocol}'='icmp',icmp_bits_incoming,'${protocol}'='fragmented',fragmented_bits_incoming,'${protocol}'='tcp_syn',tcp_syn_bits_incoming,0))
+                        AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(multiIf('${protocol}'='total',bits_incoming,'${protocol}'='tcp',tcp_bits_incoming,'${protocol}'='udp',udp_bits_incoming,'${protocol}'='icmp',icmp_bits_incoming,'${protocol}'='fragmented',fragmented_bits_incoming,'${protocol}'='tcp_syn',tcp_syn_bits_incoming,0)) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-2:
+      kind: Panel
+      spec:
+        id: 2
+        title: Outgoing bandwidth
+        description: Top 10 hosts by selected outgoing traffic type.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(multiIf('${protocol}'='total',bits_outgoing,'${protocol}'='tcp',tcp_bits_outgoing,'${protocol}'='udp',udp_bits_outgoing,'${protocol}'='icmp',icmp_bits_outgoing,'${protocol}'='fragmented',fragmented_bits_outgoing,'${protocol}'='tcp_syn',tcp_syn_bits_outgoing,0))
+                        AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(multiIf('${protocol}'='total',bits_outgoing,'${protocol}'='tcp',tcp_bits_outgoing,'${protocol}'='udp',udp_bits_outgoing,'${protocol}'='icmp',icmp_bits_outgoing,'${protocol}'='fragmented',fragmented_bits_outgoing,'${protocol}'='tcp_syn',tcp_syn_bits_outgoing,0)) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-3:
+      kind: Panel
+      spec:
+        id: 3
+        title: Incoming packet rate
+        description: Top 10 hosts by selected incoming traffic type.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(multiIf('${protocol}'='total',packets_incoming,'${protocol}'='tcp',tcp_packets_incoming,'${protocol}'='udp',udp_packets_incoming,'${protocol}'='icmp',icmp_packets_incoming,'${protocol}'='fragmented',fragmented_packets_incoming,'${protocol}'='tcp_syn',tcp_syn_packets_incoming,0))
+                        AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(multiIf('${protocol}'='total',packets_incoming,'${protocol}'='tcp',tcp_packets_incoming,'${protocol}'='udp',udp_packets_incoming,'${protocol}'='icmp',icmp_packets_incoming,'${protocol}'='fragmented',fragmented_packets_incoming,'${protocol}'='tcp_syn',tcp_syn_packets_incoming,0)) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-4:
+      kind: Panel
+      spec:
+        id: 4
+        title: Outgoing packet rate
+        description: Top 10 hosts by selected outgoing traffic type.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(multiIf('${protocol}'='total',packets_outgoing,'${protocol}'='tcp',tcp_packets_outgoing,'${protocol}'='udp',udp_packets_outgoing,'${protocol}'='icmp',icmp_packets_outgoing,'${protocol}'='fragmented',fragmented_packets_outgoing,'${protocol}'='tcp_syn',tcp_syn_packets_outgoing,0))
+                        AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(multiIf('${protocol}'='total',packets_outgoing,'${protocol}'='tcp',tcp_packets_outgoing,'${protocol}'='udp',udp_packets_outgoing,'${protocol}'='icmp',icmp_packets_outgoing,'${protocol}'='fragmented',fragmented_packets_outgoing,'${protocol}'='tcp_syn',tcp_syn_packets_outgoing,0)) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-5:
+      kind: Panel
+      spec:
+        id: 5
+        title: Incoming flow rate — total
+        description: >-
+          FastNetMon exposes total flow rate only; this panel is independent of
+          Traffic type.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(flows_incoming) AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(flows_incoming) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-6:
+      kind: Panel
+      spec:
+        id: 6
+        title: Outgoing flow rate — total
+        description: >-
+          FastNetMon exposes total flow rate only; this panel is independent of
+          Traffic type.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(flows_outgoing) AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(flows_outgoing) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: cps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-7:
+      kind: Panel
+      spec:
+        id: 7
+        title: Average packet size — incoming
+        description: Packet size for hosts ranked by selected incoming bandwidth.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(if(multiIf('${protocol}'='total',packets_incoming,'${protocol}'='tcp',tcp_packets_incoming,'${protocol}'='udp',udp_packets_incoming,'${protocol}'='icmp',icmp_packets_incoming,'${protocol}'='fragmented',fragmented_packets_incoming,'${protocol}'='tcp_syn',tcp_syn_packets_incoming,0)>0,multiIf('${protocol}'='total',bits_incoming,'${protocol}'='tcp',tcp_bits_incoming,'${protocol}'='udp',udp_bits_incoming,'${protocol}'='icmp',icmp_bits_incoming,'${protocol}'='fragmented',fragmented_bits_incoming,'${protocol}'='tcp_syn',tcp_syn_bits_incoming,0)/multiIf('${protocol}'='total',packets_incoming,'${protocol}'='tcp',tcp_packets_incoming,'${protocol}'='udp',udp_packets_incoming,'${protocol}'='icmp',icmp_packets_incoming,'${protocol}'='fragmented',fragmented_packets_incoming,'${protocol}'='tcp_syn',tcp_syn_packets_incoming,0)/8.0,0.0))
+                        AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(multiIf('${protocol}'='total',bits_incoming,'${protocol}'='tcp',tcp_bits_incoming,'${protocol}'='udp',udp_bits_incoming,'${protocol}'='icmp',icmp_bits_incoming,'${protocol}'='fragmented',fragmented_bits_incoming,'${protocol}'='tcp_syn',tcp_syn_bits_incoming,0)) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-8:
+      kind: Panel
+      spec:
+        id: 8
+        title: Average packet size — outgoing
+        description: Packet size for hosts ranked by selected outgoing bandwidth.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: >-
+                        SELECT $__timeInterval(metricDateTime) AS time, host,
+                        avg(if(multiIf('${protocol}'='total',packets_outgoing,'${protocol}'='tcp',tcp_packets_outgoing,'${protocol}'='udp',udp_packets_outgoing,'${protocol}'='icmp',icmp_packets_outgoing,'${protocol}'='fragmented',fragmented_packets_outgoing,'${protocol}'='tcp_syn',tcp_syn_packets_outgoing,0)>0,multiIf('${protocol}'='total',bits_outgoing,'${protocol}'='tcp',tcp_bits_outgoing,'${protocol}'='udp',udp_bits_outgoing,'${protocol}'='icmp',icmp_bits_outgoing,'${protocol}'='fragmented',fragmented_bits_outgoing,'${protocol}'='tcp_syn',tcp_syn_bits_outgoing,0)/multiIf('${protocol}'='total',packets_outgoing,'${protocol}'='tcp',tcp_packets_outgoing,'${protocol}'='udp',udp_packets_outgoing,'${protocol}'='icmp',icmp_packets_outgoing,'${protocol}'='fragmented',fragmented_packets_outgoing,'${protocol}'='tcp_syn',tcp_syn_packets_outgoing,0)/8.0,0.0))
+                        AS " "
+
+                        FROM fastnetmon.$protocol_version
+
+                        WHERE host IN (
+                          SELECT host FROM (
+                            SELECT host, sum(multiIf('${protocol}'='total',bits_outgoing,'${protocol}'='tcp',tcp_bits_outgoing,'${protocol}'='udp',udp_bits_outgoing,'${protocol}'='icmp',icmp_bits_outgoing,'${protocol}'='fragmented',fragmented_bits_outgoing,'${protocol}'='tcp_syn',tcp_syn_bits_outgoing,0)) AS rank_value
+                            FROM fastnetmon.$protocol_version
+                            WHERE $__timeFilter(metricDateTime)
+                            GROUP BY host ORDER BY rank_value DESC LIMIT 10
+                          )
+                        ) AND $__timeFilter(metricDateTime)
+
+                        GROUP BY host, time ORDER BY time
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bytes
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                links:
+                  - title: Open Host Inspector
+                    url: >-
+                      /d/963719233e9147e195c6240d/fastnetmon-host-inspector-ipv4?var-host=${__field.name}&from=${__from}&to=${__to}
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 8
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 0
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-1
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 0
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-2
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 11
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-3
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 11
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-4
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 22
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-5
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 22
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-6
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 33
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-7
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 33
+            width: 12
+            height: 11
+            element:
+              kind: ElementReference
+              name: panel-8
+  links: []
+  liveNow: false
+  preload: false
+  tags:
+    - FastNetMon
+    - ClickHouse
+  timeSettings:
+    from: now-5m
+    to: now
+    autoRefresh: 5s
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    hideTimepicker: false
+    fiscalYearStartMonth: 0
+  title: FastNetMon — Top Hosts
+  variables:
+    - kind: CustomVariable
+      spec:
+        name: protocol_version
+        query: 'IPv4 : host_metrics_ipv4_top, IPv6 : host_metrics_ipv6_top'
+        current:
+          text: IPv4
+          value: host_metrics_ipv4_top
+        options:
+          - selected: true
+            text: IPv4
+            value: host_metrics_ipv4_top
+          - selected: false
+            text: IPv6
+            value: host_metrics_ipv6_top
+        multi: false
+        includeAll: false
+        label: IP Version
+        hide: dontHide
+        skipUrlSync: false
+        description: IP protocol version
+        allowCustomValue: false
+    - kind: CustomVariable
+      spec:
+        name: protocol
+        query: total,tcp,udp,icmp,fragmented,tcp_syn
+        current:
+          text: total
+          value: total
+        options:
+          - selected: true
+            text: total
+            value: total
+          - selected: false
+            text: tcp
+            value: tcp
+          - selected: false
+            text: udp
+            value: udp
+          - selected: false
+            text: icmp
+            value: icmp
+          - selected: false
+            text: fragmented
+            value: fragmented
+          - selected: false
+            text: tcp_syn
+            value: tcp_syn
+        multi: false
+        includeAll: false
+        label: Traffic type
+        hide: dontHide
+        skipUrlSync: false
+        description: Protocol/vector used for bandwidth, PPS and packet-size panels
+        allowCustomValue: false
