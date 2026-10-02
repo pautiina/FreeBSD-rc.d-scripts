@@ -4,8 +4,8 @@ metadata:
   name: 6a47501b-d98c-4276-ab85-ea5f8b1049c9
   namespace: default
   uid: 041c7730-086b-499f-9dfa-133f9f120fb4
-  resourceVersion: '1790787629925017'
-  generation: 2
+  resourceVersion: '1790929609897980'
+  generation: 4
   creationTimestamp: '2026-09-30T08:11:12Z'
   labels:
     grafana.app/deprecatedInternalID: '2027804855508992'
@@ -14,7 +14,7 @@ metadata:
     grafana.app/folder: afzsq81y9hzpcd
     grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
     grafana.app/updatedBy: user:u000000002
-    grafana.app/updatedTimestamp: '2026-09-30T17:00:29Z'
+    grafana.app/updatedTimestamp: '2026-10-02T08:26:49Z'
     grafana.app/folderTitle: Pitline
     grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
 spec:
@@ -91,8 +91,10 @@ spec:
             value: title
   cursorSync: 'Off'
   description: >-
-    IPv4 host traffic inspector using exact FastNetMon host_metrics for
-    bps/pps/flows and sampled traffic DB for IN/OUT drill-down.
+    FastNetMon IPv4 Host Inspector. Exact host counters come from host_metrics.
+    Sampled traffic tables show selected-range volume and recent rate.
+    Interface-path tables/graphs show exporter and NetFlow input→output
+    interface paths for IN and OUT traffic of the selected host.
   editable: true
   elements:
     panel-1:
@@ -899,10 +901,12 @@ spec:
       kind: Panel
       spec:
         id: 17
-        title: Top source ASNs — IN
+        title: Top source ASNs — IN — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -930,130 +934,23 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
-                        concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',srcAsn,'Unknown'),'
-                        AS',toString(srcAsn)) AS `Source ASN`,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        dstIp=IPv4StringToNum('$host')
-
-                        GROUP BY srcAsn ORDER BY `Estimated bytes` DESC LIMIT 20
-                  refId: A
-                  hidden: false
-            transformations: []
-            queryOptions: {}
-        vizConfig:
-          kind: VizConfig
-          group: table
-          version: 12.4.2
-          spec:
-            options:
-              cellHeight: sm
-              footer:
-                countRows: false
-                fields: ''
-                reducer:
-                  - sum
-                show: false
-              showHeader: true
-              sortBy: []
-            fieldConfig:
-              defaults:
-                thresholds:
-                  mode: absolute
-                  steps:
-                    - value: null
-                      color: green
-                color:
-                  mode: thresholds
-                custom:
-                  align: auto
-                  cellOptions:
-                    type: auto
-                  inspect: false
-              overrides:
-                - matcher:
-                    id: byName
-                    options: Estimated bytes
-                  properties:
-                    - id: unit
-                      value: bytes
-                - matcher:
-                    id: byName
-                    options: Estimated packets
-                  properties:
-                    - id: unit
-                      value: short
-                - matcher:
-                    id: byName
-                    options: Sampled records
-                  properties:
-                    - id: unit
-                      value: short
-                - matcher:
-                    id: byName
-                    options: Destination port
-                  properties:
-                    - id: unit
-                      value: none
-                - matcher:
-                    id: byName
-                    options: Input interface
-                  properties:
-                    - id: unit
-                      value: none
-                - matcher:
-                    id: byName
-                    options: ASN
-                  properties:
-                    - id: unit
-                      value: none
-    panel-18:
-      kind: Panel
-      spec:
-        id: 18
-        title: Top source IPs — IN
-        description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
-        links: []
-        data:
-          kind: QueryGroup
-          spec:
-            queries:
-              - kind: PanelQuery
-                spec:
-                  query:
-                    kind: DataQuery
-                    group: grafana-clickhouse-datasource
-                    version: v0
-                    datasource:
-                      name: fnm-clickhouse-datasource-uid
-                    spec:
-                      editorType: sql
-                      format: 1
-                      meta:
-                        builderOptions:
-                          database: fastnetmon
-                          fields: []
-                          filters: []
-                          groupBy: []
-                          limit: 0
-                          mode: trend
-                          orderBy: []
-                      pluginVersion: 4.14.0
-                      queryType: table
-                      rawSql: >-
-                        SELECT IPv4NumToString(srcIp) AS `Source IP`, srcAsn AS
-                        ASN,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        dstIp=IPv4StringToNum('$host')
-
-                        GROUP BY srcIp,srcAsn ORDER BY `Estimated bytes` DESC
+                          concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',srcAsn,'Unknown'),' AS',toString(srcAsn)) AS `Source ASN`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                        GROUP BY srcAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
                         LIMIT 20
                   refId: A
                   hidden: false
@@ -1125,14 +1022,32 @@ spec:
                   properties:
                     - id: unit
                       value: none
-    panel-19:
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
+    panel-18:
       kind: Panel
       spec:
-        id: 19
-        title: Top destination ports — IN
+        id: 18
+        title: Top source IPs — IN — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1160,17 +1075,25 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT destinationPort AS `Destination port`,
-                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
-                        AS Protocol,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        dstIp=IPv4StringToNum('$host')
-
-                        GROUP BY destinationPort,protocol ORDER BY `Estimated
-                        bytes` DESC LIMIT 20
+                      rawSql: |-
+                        SELECT
+                          IPv4NumToString(srcIp) AS `Source IP`,
+                          srcAsn AS ASN,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                        GROUP BY srcIp,srcAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
                   refId: A
                   hidden: false
             transformations: []
@@ -1241,6 +1164,164 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
+    panel-19:
+      kind: Panel
+      spec:
+        id: 19
+        title: Top destination ports — IN — volume + recent rate
+        description: >-
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT
+                          destinationPort AS `Destination port`,
+                          transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol)) AS Protocol,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                        GROUP BY destinationPort,protocol
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+                - matcher:
+                    id: byName
+                    options: Sampled records
+                  properties:
+                    - id: unit
+                      value: short
+                - matcher:
+                    id: byName
+                    options: Destination port
+                  properties:
+                    - id: unit
+                      value: none
+                - matcher:
+                    id: byName
+                    options: Input interface
+                  properties:
+                    - id: unit
+                      value: none
+                - matcher:
+                    id: byName
+                    options: ASN
+                  properties:
+                    - id: unit
+                      value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-2:
       kind: Panel
       spec:
@@ -1315,10 +1396,12 @@ spec:
       kind: Panel
       spec:
         id: 20
-        title: TCP flags — IN
+        title: TCP flags — IN — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1346,17 +1429,25 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT arrayStringConcat(arrayMap(x ->
-                        transform(x,[1,2,4,8,16,32,64,128,256,512],['FIN','SYN','RST','PSH','ACK','URG','ECN','CWR','NONCE','RESERVED'],'UNKNOWN'),bitmaskToArray(flags)),
-                        ',') AS `TCP flags`,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        dstIp=IPv4StringToNum('$host') AND protocol=6
-
-                        GROUP BY flags ORDER BY `Estimated packets` DESC LIMIT
-                        20
+                      rawSql: |-
+                        SELECT
+                          arrayStringConcat(arrayMap(x -> transform(x,[1,2,4,8,16,32,64,128,256,512],['FIN','SYN','RST','PSH','ACK','URG','ECN','CWR','NONCE','RESERVED'],'UNKNOWN'),bitmaskToArray(flags)), ',') AS `TCP flags`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                          AND protocol=6
+                        GROUP BY flags
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
                   refId: A
                   hidden: false
             transformations: []
@@ -1427,14 +1518,31 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-21:
       kind: Panel
       spec:
         id: 21
-        title: Exporter / input interface — IN
+        title: Interface paths — IN — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1462,16 +1570,27 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT IPv4NumToString(agentIpAddress) AS Exporter,
-                        inputInterface AS `Input interface`,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        dstIp=IPv4StringToNum('$host')
-
-                        GROUP BY agentIpAddress,inputInterface ORDER BY
-                        `Estimated bytes` DESC LIMIT 20
+                      rawSql: |-
+                        SELECT
+                          IPv4NumToString(agentIpAddress) AS Exporter,
+                          inputInterface AS `Input interface`,
+                          outputInterface AS `Output interface`,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS `Interface path`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                        GROUP BY agentIpAddress,inputInterface,outputInterface
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 30
                   refId: A
                   hidden: false
             transformations: []
@@ -1508,18 +1627,6 @@ spec:
               overrides:
                 - matcher:
                     id: byName
-                    options: Estimated bytes
-                  properties:
-                    - id: unit
-                      value: bytes
-                - matcher:
-                    id: byName
-                    options: Estimated packets
-                  properties:
-                    - id: unit
-                      value: short
-                - matcher:
-                    id: byName
                     options: Sampled records
                   properties:
                     - id: unit
@@ -1542,6 +1649,38 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-22:
       kind: Panel
       spec:
@@ -1688,10 +1827,12 @@ spec:
       kind: Panel
       spec:
         id: 23
-        title: Top destination ASNs — OUT
+        title: Top destination ASNs — OUT — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1719,130 +1860,23 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
-                        concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',dstAsn,'Unknown'),'
-                        AS',toString(dstAsn)) AS `Destination ASN`,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        srcIp=IPv4StringToNum('$host')
-
-                        GROUP BY dstAsn ORDER BY `Estimated bytes` DESC LIMIT 20
-                  refId: A
-                  hidden: false
-            transformations: []
-            queryOptions: {}
-        vizConfig:
-          kind: VizConfig
-          group: table
-          version: 12.4.2
-          spec:
-            options:
-              cellHeight: sm
-              footer:
-                countRows: false
-                fields: ''
-                reducer:
-                  - sum
-                show: false
-              showHeader: true
-              sortBy: []
-            fieldConfig:
-              defaults:
-                thresholds:
-                  mode: absolute
-                  steps:
-                    - value: null
-                      color: green
-                color:
-                  mode: thresholds
-                custom:
-                  align: auto
-                  cellOptions:
-                    type: auto
-                  inspect: false
-              overrides:
-                - matcher:
-                    id: byName
-                    options: Estimated bytes
-                  properties:
-                    - id: unit
-                      value: bytes
-                - matcher:
-                    id: byName
-                    options: Estimated packets
-                  properties:
-                    - id: unit
-                      value: short
-                - matcher:
-                    id: byName
-                    options: Sampled records
-                  properties:
-                    - id: unit
-                      value: short
-                - matcher:
-                    id: byName
-                    options: Destination port
-                  properties:
-                    - id: unit
-                      value: none
-                - matcher:
-                    id: byName
-                    options: Input interface
-                  properties:
-                    - id: unit
-                      value: none
-                - matcher:
-                    id: byName
-                    options: ASN
-                  properties:
-                    - id: unit
-                      value: none
-    panel-24:
-      kind: Panel
-      spec:
-        id: 24
-        title: Top destination IPs — OUT
-        description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
-        links: []
-        data:
-          kind: QueryGroup
-          spec:
-            queries:
-              - kind: PanelQuery
-                spec:
-                  query:
-                    kind: DataQuery
-                    group: grafana-clickhouse-datasource
-                    version: v0
-                    datasource:
-                      name: fnm-clickhouse-datasource-uid
-                    spec:
-                      editorType: sql
-                      format: 1
-                      meta:
-                        builderOptions:
-                          database: fastnetmon
-                          fields: []
-                          filters: []
-                          groupBy: []
-                          limit: 0
-                          mode: trend
-                          orderBy: []
-                      pluginVersion: 4.14.0
-                      queryType: table
-                      rawSql: >-
-                        SELECT IPv4NumToString(dstIp) AS `Destination IP`,
-                        dstAsn AS ASN,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        srcIp=IPv4StringToNum('$host')
-
-                        GROUP BY dstIp,dstAsn ORDER BY `Estimated bytes` DESC
+                          concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',dstAsn,'Unknown'),' AS',toString(dstAsn)) AS `Destination ASN`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                        GROUP BY dstAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
                         LIMIT 20
                   refId: A
                   hidden: false
@@ -1914,14 +1948,174 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
+    panel-24:
+      kind: Panel
+      spec:
+        id: 24
+        title: Top destination IPs — OUT — volume + recent rate
+        description: >-
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 1
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: table
+                      rawSql: |-
+                        SELECT
+                          IPv4NumToString(dstIp) AS `Destination IP`,
+                          dstAsn AS ASN,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                        GROUP BY dstIp,dstAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: table
+          version: 12.4.2
+          spec:
+            options:
+              cellHeight: sm
+              footer:
+                countRows: false
+                fields: ''
+                reducer:
+                  - sum
+                show: false
+              showHeader: true
+              sortBy: []
+            fieldConfig:
+              defaults:
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  inspect: false
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+                - matcher:
+                    id: byName
+                    options: Sampled records
+                  properties:
+                    - id: unit
+                      value: short
+                - matcher:
+                    id: byName
+                    options: Destination port
+                  properties:
+                    - id: unit
+                      value: none
+                - matcher:
+                    id: byName
+                    options: Input interface
+                  properties:
+                    - id: unit
+                      value: none
+                - matcher:
+                    id: byName
+                    options: ASN
+                  properties:
+                    - id: unit
+                      value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-25:
       kind: Panel
       spec:
         id: 25
-        title: Top destination ports — OUT
+        title: Top destination ports — OUT — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1949,17 +2143,25 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT destinationPort AS `Destination port`,
-                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
-                        AS Protocol,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        srcIp=IPv4StringToNum('$host')
-
-                        GROUP BY destinationPort,protocol ORDER BY `Estimated
-                        bytes` DESC LIMIT 20
+                      rawSql: |-
+                        SELECT
+                          destinationPort AS `Destination port`,
+                          transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol)) AS Protocol,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                        GROUP BY destinationPort,protocol
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
                   refId: A
                   hidden: false
             transformations: []
@@ -2030,14 +2232,32 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-26:
       kind: Panel
       spec:
         id: 26
-        title: TCP flags — OUT
+        title: TCP flags — OUT — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated volume/packets are totals for the selected dashboard time
+          range. Recent bitrate/PPS are estimated from sampled traffic over the
+          selected Recent rate window, ending at the dashboard To time. Ranking
+          is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -2065,17 +2285,25 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT arrayStringConcat(arrayMap(x ->
-                        transform(x,[1,2,4,8,16,32,64,128,256,512],['FIN','SYN','RST','PSH','ACK','URG','ECN','CWR','NONCE','RESERVED'],'UNKNOWN'),bitmaskToArray(flags)),
-                        ',') AS `TCP flags`,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        srcIp=IPv4StringToNum('$host') AND protocol=6
-
-                        GROUP BY flags ORDER BY `Estimated packets` DESC LIMIT
-                        20
+                      rawSql: |-
+                        SELECT
+                          arrayStringConcat(arrayMap(x -> transform(x,[1,2,4,8,16,32,64,128,256,512],['FIN','SYN','RST','PSH','ACK','URG','ECN','CWR','NONCE','RESERVED'],'UNKNOWN'),bitmaskToArray(flags)), ',') AS `TCP flags`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                          AND protocol=6
+                        GROUP BY flags
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
                   refId: A
                   hidden: false
             transformations: []
@@ -2146,14 +2374,31 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-27:
       kind: Panel
       spec:
         id: 27
-        title: Exporter / output interface — OUT
+        title: Interface paths — OUT — volume + recent rate
         description: >-
-          Traffic DB is sampled; byte/packet columns are extrapolated with
-          sampleRatio.
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -2181,16 +2426,27 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT IPv4NumToString(agentIpAddress) AS Exporter,
-                        outputInterface AS `Output interface`,
-                         sum(length*sampleRatio) AS `Estimated bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND
-                        srcIp=IPv4StringToNum('$host')
-
-                        GROUP BY agentIpAddress,outputInterface ORDER BY
-                        `Estimated bytes` DESC LIMIT 20
+                      rawSql: |-
+                        SELECT
+                          IPv4NumToString(agentIpAddress) AS Exporter,
+                          inputInterface AS `Input interface`,
+                          outputInterface AS `Output interface`,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS `Interface path`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                        GROUP BY agentIpAddress,inputInterface,outputInterface
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 30
                   refId: A
                   hidden: false
             transformations: []
@@ -2225,18 +2481,6 @@ spec:
                     type: auto
                   inspect: false
               overrides:
-                - matcher:
-                    id: byName
-                    options: Estimated bytes
-                  properties:
-                    - id: unit
-                      value: bytes
-                - matcher:
-                    id: byName
-                    options: Estimated packets
-                  properties:
-                    - id: unit
-                      value: short
                 - matcher:
                     id: byName
                     options: Sampled records
@@ -2267,6 +2511,280 @@ spec:
                   properties:
                     - id: unit
                       value: none
+                - matcher:
+                    id: byName
+                    options: Estimated bytes
+                  properties:
+                    - id: unit
+                      value: bytes
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Estimated packets
+                  properties:
+                    - id: unit
+                      value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
+    panel-28:
+      kind: Panel
+      spec:
+        id: 28
+        title: Interface paths — IN bandwidth
+        description: >-
+          Top 12 exporter input→output paths for traffic TO this host.
+          Sampled/reconstructed and stacked.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(length*sampleRatio*8) / step AS value
+                        FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
+                            FROM fastnetmon.traffic
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND dstIp=IPv4StringToNum('$host')
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(length*sampleRatio) DESC
+                            LIMIT 12
+                          )
+                        GROUP BY time,path
+                        ORDER BY time,path
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 18
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: normal
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-29:
+      kind: Panel
+      spec:
+        id: 29
+        title: Interface paths — IN packet rate
+        description: >-
+          Top 12 exporter input→output paths for traffic TO this host.
+          Sampled/reconstructed and stacked.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(numberOfPackets*sampleRatio) / step AS value
+                        FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND dstIp=IPv4StringToNum('$host')
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
+                            FROM fastnetmon.traffic
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND dstIp=IPv4StringToNum('$host')
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(numberOfPackets*sampleRatio) DESC
+                            LIMIT 12
+                          )
+                        GROUP BY time,path
+                        ORDER BY time,path
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 18
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: normal
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
     panel-3:
       kind: Panel
       spec:
@@ -2336,6 +2854,248 @@ spec:
                       color: green
                 color:
                   mode: thresholds
+              overrides: []
+    panel-30:
+      kind: Panel
+      spec:
+        id: 30
+        title: Interface paths — OUT bandwidth
+        description: >-
+          Top 12 exporter input→output paths for traffic FROM this host.
+          Sampled/reconstructed and stacked.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(length*sampleRatio*8) / step AS value
+                        FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
+                            FROM fastnetmon.traffic
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND srcIp=IPv4StringToNum('$host')
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(length*sampleRatio) DESC
+                            LIMIT 12
+                          )
+                        GROUP BY time,path
+                        ORDER BY time,path
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: bps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 18
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: normal
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-31:
+      kind: Panel
+      spec:
+        id: 31
+        title: Interface paths — OUT packet rate
+        description: >-
+          Top 12 exporter input→output paths for traffic FROM this host.
+          Sampled/reconstructed and stacked.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(numberOfPackets*sampleRatio) / step AS value
+                        FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND srcIp=IPv4StringToNum('$host')
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
+                            FROM fastnetmon.traffic
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND srcIp=IPv4StringToNum('$host')
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(numberOfPackets*sampleRatio) DESC
+                            LIMIT 12
+                          )
+                        GROUP BY time,path
+                        ORDER BY time,path
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 18
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: normal
+                  thresholdsStyle:
+                    mode: 'off'
               overrides: []
     panel-4:
       kind: Panel
@@ -3035,12 +3795,48 @@ spec:
         - kind: GridLayoutItem
           spec:
             x: 0
-            'y': 106
+            'y': 126
             width: 24
             height: 16
             element:
               kind: ElementReference
               name: panel-22
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 106
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-28
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 106
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-29
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 116
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-30
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 116
+            width: 12
+            height: 10
+            element:
+              kind: ElementReference
+              name: panel-31
   links: []
   liveNow: false
   preload: false
@@ -3076,3 +3872,56 @@ spec:
         label: IPv4 host
         hide: dontHide
         skipUrlSync: false
+    - kind: CustomVariable
+      spec:
+        name: rate_window
+        query: '10 sec : 10, 30 sec : 30, 1 min : 60, 5 min : 300'
+        current:
+          text: 30 sec
+          value: '30'
+        options:
+          - selected: false
+            text: 10 sec
+            value: '10'
+          - selected: true
+            text: 30 sec
+            value: '30'
+          - selected: false
+            text: 1 min
+            value: '60'
+          - selected: false
+            text: 5 min
+            value: '300'
+        multi: false
+        includeAll: false
+        label: Recent rate window
+        hide: dontHide
+        skipUrlSync: false
+        description: >-
+          Window ending at the dashboard To time, used for Recent bitrate and
+          Recent PPS.
+        allowCustomValue: false
+    - kind: CustomVariable
+      spec:
+        name: rank_by
+        query: 'Volume : volume, Recent bitrate : recent_bps, Recent PPS : recent_pps'
+        current:
+          text: Recent bitrate
+          value: recent_bps
+        options:
+          - selected: false
+            text: Volume
+            value: volume
+          - selected: true
+            text: Recent bitrate
+            value: recent_bps
+          - selected: false
+            text: Recent PPS
+            value: recent_pps
+        multi: false
+        includeAll: false
+        label: Rank top tables by
+        hide: dontHide
+        skipUrlSync: false
+        description: Changes ranking only; volume and recent rate remain visible together.
+        allowCustomValue: false
