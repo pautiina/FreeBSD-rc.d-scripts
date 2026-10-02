@@ -4,17 +4,19 @@ metadata:
   name: fnm-asn-inspector
   namespace: default
   uid: 9415b50d-344e-481d-a1c4-20a364f42848
-  resourceVersion: '1790794011604987'
-  generation: 3
+  resourceVersion: '1790929622475019'
+  generation: 5
   creationTimestamp: '2026-09-30T16:39:21Z'
   labels:
     grafana.app/deprecatedInternalID: '2155684667203584'
   annotations:
     grafana.app/createdBy: user:u000000002
-    grafana.app/folder: ''
+    grafana.app/folder: afzsq81y9hzpcd
     grafana.app/saved-from-ui: Grafana v13.1.1 (a9cee6e172)
     grafana.app/updatedBy: user:u000000002
-    grafana.app/updatedTimestamp: '2026-09-30T18:46:51Z'
+    grafana.app/updatedTimestamp: '2026-10-02T08:27:02Z'
+    grafana.app/folderTitle: Pitline
+    grafana.app/folderUrl: /dashboards/f/afzsq81y9hzpcd/pitline
 spec:
   annotations:
     - kind: AnnotationQuery
@@ -89,9 +91,10 @@ spec:
             value: title
   cursorSync: 'Off'
   description: >-
-    ASN traffic inspector based on sampled FastNetMon traffic DB. v3 adds
-    exporter input→output interface path analysis for traffic TO and FROM the
-    selected ASN.
+    FastNetMon ASN Inspector. Traffic for the selected ASN is reconstructed from
+    sampled traffic DB. Tables show selected-range volume plus recent
+    bitrate/PPS. Interface-path graphs show exporter and NetFlow input→output
+    interface paths for traffic TO and FROM the selected ASN.
   editable: true
   elements:
     panel-1:
@@ -1012,8 +1015,11 @@ spec:
       kind: Panel
       spec:
         id: 17
-        title: Top source ASNs → AS$asn
-        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        title: Top source ASNs → AS$asn — volume + recent rate
+        description: >-
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1041,18 +1047,33 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
-                        concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',srcAsn,'Unknown'),'
-                        AS',toString(srcAsn)) AS `Source ASN`,
-                        sum(length*sampleRatio) AS `Estimated bytes`,
-                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
-                        count() AS `Sampled records` FROM fastnetmon.traffic
-                        WHERE $__timeFilter(packetDateTime) AND
-                        ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
-                        dstAsn=$asn GROUP BY srcAsn ORDER BY `Estimated bytes`
-                        DESC LIMIT 20
+                          concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',srcAsn,'Unknown'),' AS',toString(srcAsn)) AS `Source ASN`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND dstAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                        GROUP BY srcAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
                   refId: A
                   hidden: false
             transformations: []
@@ -1093,18 +1114,41 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-18:
       kind: Panel
       spec:
         id: 18
-        title: Top destination ASNs from AS$asn
-        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        title: Top destination ASNs from AS$asn — volume + recent rate
+        description: >-
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1132,18 +1176,33 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
-                        concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',dstAsn,'Unknown'),'
-                        AS',toString(dstAsn)) AS `Destination ASN`,
-                        sum(length*sampleRatio) AS `Estimated bytes`,
-                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
-                        count() AS `Sampled records` FROM fastnetmon.traffic
-                        WHERE $__timeFilter(packetDateTime) AND
-                        ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
-                        srcAsn=$asn GROUP BY dstAsn ORDER BY `Estimated bytes`
-                        DESC LIMIT 20
+                          concat(dictGetOrDefault('fastnetmon.asn_information','asn_name',dstAsn,'Unknown'),' AS',toString(dstAsn)) AS `Destination ASN`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND srcAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                        GROUP BY dstAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 20
                   refId: A
                   hidden: false
             transformations: []
@@ -1184,18 +1243,41 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-19:
       kind: Panel
       spec:
         id: 19
-        title: Top source IPs → AS$asn
-        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        title: Top source IPs → AS$asn — volume + recent rate
+        description: >-
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1223,17 +1305,34 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
-                        if(ipProtocolVersion=4,IPv4NumToString(srcIp),IPv6NumToString(srcIpv6))
-                        AS `Source IP`, srcAsn AS ASN, sum(length*sampleRatio)
-                        AS `Estimated bytes`, sum(numberOfPackets*sampleRatio)
-                        AS `Estimated packets`, count() AS `Sampled records`
-                        FROM fastnetmon.traffic WHERE
-                        $__timeFilter(packetDateTime) AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
-                        dstAsn=$asn GROUP BY `Source IP`,srcAsn ORDER BY
-                        `Estimated bytes` DESC LIMIT 30
+                          if(ipProtocolVersion=4,IPv4NumToString(srcIp),IPv6NumToString(srcIpv6)) AS `Source IP`,
+                          srcAsn AS ASN,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND dstAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                        GROUP BY `Source IP`,srcAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 30
                   refId: A
                   hidden: false
             transformations: []
@@ -1274,12 +1373,32 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-2:
       kind: Panel
       spec:
@@ -1369,8 +1488,11 @@ spec:
       kind: Panel
       spec:
         id: 20
-        title: Top destination IPs from AS$asn
-        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        title: Top destination IPs from AS$asn — volume + recent rate
+        description: >-
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1398,18 +1520,34 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
-                        if(ipProtocolVersion=4,IPv4NumToString(dstIp),IPv6NumToString(dstIpv6))
-                        AS `Destination IP`, dstAsn AS ASN,
-                        sum(length*sampleRatio) AS `Estimated bytes`,
-                        sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
-                        count() AS `Sampled records` FROM fastnetmon.traffic
-                        WHERE $__timeFilter(packetDateTime) AND
-                        ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
-                        srcAsn=$asn GROUP BY `Destination IP`,dstAsn ORDER BY
-                        `Estimated bytes` DESC LIMIT 30
+                          if(ipProtocolVersion=4,IPv4NumToString(dstIp),IPv6NumToString(dstIpv6)) AS `Destination IP`,
+                          dstAsn AS ASN,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND srcAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                        GROUP BY `Destination IP`,dstAsn
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 30
                   refId: A
                   hidden: false
             transformations: []
@@ -1450,18 +1588,41 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-21:
       kind: Panel
       spec:
         id: 21
-        title: Destination ports → AS$asn
-        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        title: Destination ports → AS$asn — volume + recent rate
+        description: >-
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1489,17 +1650,34 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT destinationPort AS `Destination port`,
-                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
-                        AS Protocol, sum(length*sampleRatio) AS `Estimated
-                        bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated
-                        packets`, count() AS `Sampled records` FROM
-                        fastnetmon.traffic WHERE $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
-                        dstAsn=$asn GROUP BY destinationPort,Protocol ORDER BY
-                        `Estimated bytes` DESC LIMIT 30
+                      rawSql: |-
+                        SELECT
+                          destinationPort AS `Destination port`,
+                          transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol)) AS Protocol,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND dstAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                        GROUP BY destinationPort,protocol
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 30
                   refId: A
                   hidden: false
             transformations: []
@@ -1540,18 +1718,41 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-22:
       kind: Panel
       spec:
         id: 22
-        title: Destination ports from AS$asn
-        description: Traffic DB is sampled; values are reconstructed with sampleRatio.
+        title: Destination ports from AS$asn — volume + recent rate
+        description: >-
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1579,17 +1780,34 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
-                        SELECT destinationPort AS `Destination port`,
-                        transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol))
-                        AS Protocol, sum(length*sampleRatio) AS `Estimated
-                        bytes`, sum(numberOfPackets*sampleRatio) AS `Estimated
-                        packets`, count() AS `Sampled records` FROM
-                        fastnetmon.traffic WHERE $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6) AND
-                        srcAsn=$asn GROUP BY destinationPort,Protocol ORDER BY
-                        `Estimated bytes` DESC LIMIT 30
+                      rawSql: |-
+                        SELECT
+                          destinationPort AS `Destination port`,
+                          transform(protocol,[6,17,1],['TCP','UDP','ICMP'],toString(protocol)) AS Protocol,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
+                          count() AS `Sampled records`
+                        FROM fastnetmon.traffic
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND srcAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                        GROUP BY destinationPort,protocol
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
+                        LIMIT 30
                   refId: A
                   hidden: false
             transformations: []
@@ -1630,20 +1848,41 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
+                - matcher:
+                    id: byName
+                    options: Recent bitrate
+                  properties:
+                    - id: unit
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-23:
       kind: Panel
       spec:
         id: 23
-        title: TO ASN — interface path summary
+        title: Interface paths → AS$asn — volume + recent rate
         description: >-
-          For flows where dstAsn=$asn. Input and output interfaces are taken
-          from the same sampled flow record.
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1671,34 +1910,35 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
                           IPv4NumToString(agentIpAddress) AS Exporter,
                           inputInterface AS `Input interface`,
                           outputInterface AS `Output interface`,
-                          sum(length * sampleRatio) AS `Estimated bytes`,
-                          sum(numberOfPackets * sampleRatio) AS `Estimated packets`,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS `Interface path`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
                           count() AS `Sampled records`
                         FROM fastnetmon.traffic
-
-                        WHERE packetDate >= toDate($__fromTime) AND packetDate
-                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6)
-                          AND dstAsn = $asn
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND dstAsn=$asn
                           AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-
-                        GROUP BY Exporter, `Input interface`, `Output interface`
-
-                        ORDER BY `Estimated bytes` DESC
-
+                        GROUP BY agentIpAddress,inputInterface,outputInterface
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
                         LIMIT 30
                   refId: A
                   hidden: false
@@ -1740,26 +1980,41 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
                 - matcher:
                     id: byName
-                    options: Sampled records
+                    options: Recent bitrate
                   properties:
                     - id: unit
-                      value: short
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-24:
       kind: Panel
       spec:
         id: 24
-        title: FROM ASN — interface path summary
+        title: Interface paths from AS$asn — volume + recent rate
         description: >-
-          For flows where srcAsn=$asn. Input and output interfaces are taken
-          from the same sampled flow record.
+          Estimated bytes/packets are totals over the selected dashboard range.
+          Recent bitrate/PPS are reconstructed from sampled traffic over Recent
+          rate window. Ranking is controlled by Rank top tables by.
         links: []
         data:
           kind: QueryGroup
@@ -1787,34 +2042,35 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: table
-                      rawSql: >-
+                      rawSql: |-
                         SELECT
                           IPv4NumToString(agentIpAddress) AS Exporter,
                           inputInterface AS `Input interface`,
                           outputInterface AS `Output interface`,
-                          sum(length * sampleRatio) AS `Estimated bytes`,
-                          sum(numberOfPackets * sampleRatio) AS `Estimated packets`,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS `Interface path`,
+                          sum(length*sampleRatio) AS `Estimated bytes`,
+                          sum(numberOfPackets*sampleRatio) AS `Estimated packets`,
+                          sumIf(length*sampleRatio*8, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent bitrate`,
+                          sumIf(numberOfPackets*sampleRatio, packetDateTime >= $__toTime - toIntervalSecond($rate_window)) / $rate_window AS `Recent PPS`,
                           count() AS `Sampled records`
                         FROM fastnetmon.traffic
-
-                        WHERE packetDate >= toDate($__fromTime) AND packetDate
-                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6)
-                          AND srcAsn = $asn
+                        WHERE $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND srcAsn=$asn
                           AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-
-                        GROUP BY Exporter, `Input interface`, `Output interface`
-
-                        ORDER BY `Estimated bytes` DESC
-
+                        GROUP BY agentIpAddress,inputInterface,outputInterface
+                        ORDER BY multiIf(
+                          '$rank_by' = 'volume', toFloat64(`Estimated bytes`),
+                          '$rank_by' = 'recent_pps', toFloat64(`Recent PPS`),
+                          toFloat64(`Recent bitrate`)
+                        ) DESC
                         LIMIT 30
                   refId: A
                   hidden: false
@@ -1856,18 +2112,32 @@ spec:
                   properties:
                     - id: unit
                       value: bytes
+                    - id: decimals
+                      value: 2
                 - matcher:
                     id: byName
                     options: Estimated packets
                   properties:
                     - id: unit
                       value: short
+                    - id: decimals
+                      value: 0
                 - matcher:
                     id: byName
-                    options: Sampled records
+                    options: Recent bitrate
                   properties:
                     - id: unit
-                      value: short
+                      value: bps
+                    - id: decimals
+                      value: 2
+                - matcher:
+                    id: byName
+                    options: Recent PPS
+                  properties:
+                    - id: unit
+                      value: pps
+                    - id: decimals
+                      value: 1
     panel-25:
       kind: Panel
       spec:
@@ -1959,11 +2229,10 @@ spec:
       kind: Panel
       spec:
         id: 26
-        title: TO ASN — bandwidth by interface path
+        title: Interface paths → AS$asn — bandwidth
         description: >-
-          Traffic whose destination ASN is the selected ASN. Series are exporter
-          / input interface → output interface pairs from the same sampled flow.
-          Top 10 paths by reconstructed traffic in the selected range.
+          Top 12 exporter input→output paths carrying traffic TO the selected
+          ASN. Sampled/reconstructed and stacked.
         links: []
         data:
           kind: QueryGroup
@@ -1991,48 +2260,48 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: timeseries
-                      rawSql: >-
-                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
-
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
                         SELECT
-                          toDateTime(intDiv(toUInt32(packetDateTime), step) * step) AS time,
-                          concat(IPv4NumToString(agentIpAddress), ' / if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
-                          sum(length * sampleRatio * 8) / step AS bps
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(length*sampleRatio*8) / step AS value
                         FROM fastnetmon.traffic
-
-                        WHERE packetDate >= toDate($__fromTime) AND packetDate
-                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6)
-                          AND dstAsn = $asn
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND dstAsn=$asn
                           AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-                          AND (agentIpAddress, inputInterface, outputInterface) IN (
-                            SELECT agentIpAddress, inputInterface, outputInterface
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
                             FROM fastnetmon.traffic
-                            WHERE packetDate >= toDate($__fromTime) AND packetDate <= toDate($__toTime) AND $__timeFilter(packetDateTime) AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
-                              AND dstAsn = $asn
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                              AND dstAsn=$asn
                               AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-                            GROUP BY agentIpAddress, inputInterface, outputInterface
-                            ORDER BY sum(length * sampleRatio * 8) DESC
-                            LIMIT 10
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(length*sampleRatio) DESC
+                            LIMIT 12
                           )
-                        GROUP BY time, path
-
-                        ORDER BY time, path
+                        GROUP BY time,path
+                        ORDER BY time,path
                   refId: A
                   hidden: false
             transformations: []
@@ -2074,7 +2343,7 @@ spec:
                   barAlignment: 0
                   barWidthFactor: 0.6
                   drawStyle: line
-                  fillOpacity: 8
+                  fillOpacity: 18
                   gradientMode: none
                   hideFrom:
                     legend: false
@@ -2091,7 +2360,7 @@ spec:
                   spanNulls: true
                   stacking:
                     group: A
-                    mode: none
+                    mode: normal
                   thresholdsStyle:
                     mode: 'off'
               overrides: []
@@ -2099,11 +2368,10 @@ spec:
       kind: Panel
       spec:
         id: 27
-        title: FROM ASN — bandwidth by interface path
+        title: Interface paths → AS$asn — packet rate
         description: >-
-          Traffic whose source ASN is the selected ASN. Series are exporter /
-          input interface → output interface pairs from the same sampled flow.
-          Top 10 paths by reconstructed traffic in the selected range.
+          Top 12 exporter input→output paths carrying traffic TO the selected
+          ASN. Sampled/reconstructed and stacked.
         links: []
         data:
           kind: QueryGroup
@@ -2131,48 +2399,187 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: timeseries
-                      rawSql: >-
-                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
-
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
                         SELECT
-                          toDateTime(intDiv(toUInt32(packetDateTime), step) * step) AS time,
-                          concat(IPv4NumToString(agentIpAddress), ' / if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
-                          sum(length * sampleRatio * 8) / step AS bps
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(numberOfPackets*sampleRatio) / step AS value
                         FROM fastnetmon.traffic
-
-                        WHERE packetDate >= toDate($__fromTime) AND packetDate
-                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6)
-                          AND srcAsn = $asn
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND dstAsn=$asn
                           AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-                          AND (agentIpAddress, inputInterface, outputInterface) IN (
-                            SELECT agentIpAddress, inputInterface, outputInterface
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
                             FROM fastnetmon.traffic
-                            WHERE packetDate >= toDate($__fromTime) AND packetDate <= toDate($__toTime) AND $__timeFilter(packetDateTime) AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
-                              AND srcAsn = $asn
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                              AND dstAsn=$asn
                               AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-                            GROUP BY agentIpAddress, inputInterface, outputInterface
-                            ORDER BY sum(length * sampleRatio * 8) DESC
-                            LIMIT 10
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(numberOfPackets*sampleRatio) DESC
+                            LIMIT 12
                           )
-                        GROUP BY time, path
-
-                        ORDER BY time, path
+                        GROUP BY time,path
+                        ORDER BY time,path
+                  refId: A
+                  hidden: false
+            transformations: []
+            queryOptions: {}
+        vizConfig:
+          kind: VizConfig
+          group: timeseries
+          version: 12.4.2
+          spec:
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                  - max
+                  - mean
+                displayMode: table
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+            fieldConfig:
+              defaults:
+                unit: pps
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - value: null
+                      color: green
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 18
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: never
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: normal
+                  thresholdsStyle:
+                    mode: 'off'
+              overrides: []
+    panel-28:
+      kind: Panel
+      spec:
+        id: 28
+        title: Interface paths from AS$asn — bandwidth
+        description: >-
+          Top 12 exporter input→output paths carrying traffic FROM the selected
+          ASN. Sampled/reconstructed and stacked.
+        links: []
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  query:
+                    kind: DataQuery
+                    group: grafana-clickhouse-datasource
+                    version: v0
+                    datasource:
+                      name: fnm-clickhouse-datasource-uid
+                    spec:
+                      editorType: sql
+                      format: 0
+                      meta:
+                        builderOptions:
+                          database: fastnetmon
+                          fields: []
+                          filters: []
+                          groupBy: []
+                          limit: 0
+                          mode: trend
+                          orderBy: []
+                      pluginVersion: 4.14.0
+                      queryType: timeseries
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
+                        SELECT
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(length*sampleRatio*8) / step AS value
+                        FROM fastnetmon.traffic
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND srcAsn=$asn
+                          AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
+                            FROM fastnetmon.traffic
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                              AND srcAsn=$asn
+                              AND (
+                          '${protocol}' = 'total'
+                          OR ('${protocol}' = 'tcp' AND protocol = 6)
+                          OR ('${protocol}' = 'udp' AND protocol = 17)
+                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
+                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
+                        )
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(length*sampleRatio) DESC
+                            LIMIT 12
+                          )
+                        GROUP BY time,path
+                        ORDER BY time,path
                   refId: A
                   hidden: false
             transformations: []
@@ -2214,7 +2621,7 @@ spec:
                   barAlignment: 0
                   barWidthFactor: 0.6
                   drawStyle: line
-                  fillOpacity: 8
+                  fillOpacity: 18
                   gradientMode: none
                   hideFrom:
                     legend: false
@@ -2231,147 +2638,7 @@ spec:
                   spanNulls: true
                   stacking:
                     group: A
-                    mode: none
-                  thresholdsStyle:
-                    mode: 'off'
-              overrides: []
-    panel-28:
-      kind: Panel
-      spec:
-        id: 28
-        title: TO ASN — packet rate by interface path
-        description: >-
-          Traffic whose destination ASN is the selected ASN. Series are exporter
-          / input interface → output interface pairs from the same sampled flow.
-          Top 10 paths by reconstructed traffic in the selected range.
-        links: []
-        data:
-          kind: QueryGroup
-          spec:
-            queries:
-              - kind: PanelQuery
-                spec:
-                  query:
-                    kind: DataQuery
-                    group: grafana-clickhouse-datasource
-                    version: v0
-                    datasource:
-                      name: fnm-clickhouse-datasource-uid
-                    spec:
-                      editorType: sql
-                      format: 0
-                      meta:
-                        builderOptions:
-                          database: fastnetmon
-                          fields: []
-                          filters: []
-                          groupBy: []
-                          limit: 0
-                          mode: trend
-                          orderBy: []
-                      pluginVersion: 4.14.0
-                      queryType: timeseries
-                      rawSql: >-
-                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
-
-                        SELECT
-                          toDateTime(intDiv(toUInt32(packetDateTime), step) * step) AS time,
-                          concat(IPv4NumToString(agentIpAddress), ' / if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
-                          sum(numberOfPackets * sampleRatio) / step AS pps
-                        FROM fastnetmon.traffic
-
-                        WHERE packetDate >= toDate($__fromTime) AND packetDate
-                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6)
-                          AND dstAsn = $asn
-                          AND (
-                          '${protocol}' = 'total'
-                          OR ('${protocol}' = 'tcp' AND protocol = 6)
-                          OR ('${protocol}' = 'udp' AND protocol = 17)
-                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
-                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
-                        )
-                          AND (agentIpAddress, inputInterface, outputInterface) IN (
-                            SELECT agentIpAddress, inputInterface, outputInterface
-                            FROM fastnetmon.traffic
-                            WHERE packetDate >= toDate($__fromTime) AND packetDate <= toDate($__toTime) AND $__timeFilter(packetDateTime) AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
-                              AND dstAsn = $asn
-                              AND (
-                          '${protocol}' = 'total'
-                          OR ('${protocol}' = 'tcp' AND protocol = 6)
-                          OR ('${protocol}' = 'udp' AND protocol = 17)
-                          OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
-                          OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
-                        )
-                            GROUP BY agentIpAddress, inputInterface, outputInterface
-                            ORDER BY sum(numberOfPackets * sampleRatio) DESC
-                            LIMIT 10
-                          )
-                        GROUP BY time, path
-
-                        ORDER BY time, path
-                  refId: A
-                  hidden: false
-            transformations: []
-            queryOptions: {}
-        vizConfig:
-          kind: VizConfig
-          group: timeseries
-          version: 12.4.2
-          spec:
-            options:
-              legend:
-                calcs:
-                  - lastNotNull
-                  - max
-                  - mean
-                displayMode: table
-                placement: bottom
-                showLegend: true
-              tooltip:
-                hideZeros: false
-                mode: multi
-                sort: desc
-            fieldConfig:
-              defaults:
-                unit: pps
-                thresholds:
-                  mode: absolute
-                  steps:
-                    - value: null
-                      color: green
-                color:
-                  mode: palette-classic
-                custom:
-                  axisBorderShow: false
-                  axisCenteredZero: false
-                  axisColorMode: text
-                  axisLabel: ''
-                  axisPlacement: auto
-                  barAlignment: 0
-                  barWidthFactor: 0.6
-                  drawStyle: line
-                  fillOpacity: 8
-                  gradientMode: none
-                  hideFrom:
-                    legend: false
-                    tooltip: false
-                    viz: false
-                  insertNulls: false
-                  lineInterpolation: linear
-                  lineWidth: 1
-                  pointSize: 4
-                  scaleDistribution:
-                    type: linear
-                  showPoints: never
-                  showValues: false
-                  spanNulls: true
-                  stacking:
-                    group: A
-                    mode: none
+                    mode: normal
                   thresholdsStyle:
                     mode: 'off'
               overrides: []
@@ -2379,11 +2646,10 @@ spec:
       kind: Panel
       spec:
         id: 29
-        title: FROM ASN — packet rate by interface path
+        title: Interface paths from AS$asn — packet rate
         description: >-
-          Traffic whose source ASN is the selected ASN. Series are exporter /
-          input interface → output interface pairs from the same sampled flow.
-          Top 10 paths by reconstructed traffic in the selected range.
+          Top 12 exporter input→output paths carrying traffic FROM the selected
+          ASN. Sampled/reconstructed and stacked.
         links: []
         data:
           kind: QueryGroup
@@ -2411,48 +2677,48 @@ spec:
                           orderBy: []
                       pluginVersion: 4.14.0
                       queryType: timeseries
-                      rawSql: >-
-                        WITH greatest(intDiv($__interval_ms, 1000), 1) AS step
-
+                      rawSql: |-
+                        WITH greatest(intDiv($__interval_ms,1000),1) AS step
                         SELECT
-                          toDateTime(intDiv(toUInt32(packetDateTime), step) * step) AS time,
-                          concat(IPv4NumToString(agentIpAddress), ' / if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
-                          sum(numberOfPackets * sampleRatio) / step AS pps
+                          toDateTime(intDiv(toUInt32(packetDateTime),step)*step) AS time,
+                          concat(IPv4NumToString(agentIpAddress), ': if', toString(inputInterface), ' → if', toString(outputInterface)) AS path,
+                          sum(numberOfPackets*sampleRatio) / step AS value
                         FROM fastnetmon.traffic
-
-                        WHERE packetDate >= toDate($__fromTime) AND packetDate
-                        <= toDate($__toTime) AND $__timeFilter(packetDateTime)
-                        AND ipProtocolVersion =
-                        if('$protocol_version'='asn_metrics_ipv4',4,6)
-                          AND srcAsn = $asn
+                        WHERE packetDate >= toDate($__fromTime)
+                          AND packetDate <= toDate($__toTime)
+                          AND $__timeFilter(packetDateTime)
+                          AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                          AND srcAsn=$asn
                           AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-                          AND (agentIpAddress, inputInterface, outputInterface) IN (
-                            SELECT agentIpAddress, inputInterface, outputInterface
+                          AND tuple(agentIpAddress,inputInterface,outputInterface) IN (
+                            SELECT tuple(agentIpAddress,inputInterface,outputInterface)
                             FROM fastnetmon.traffic
-                            WHERE packetDate >= toDate($__fromTime) AND packetDate <= toDate($__toTime) AND $__timeFilter(packetDateTime) AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
-                              AND srcAsn = $asn
+                            WHERE packetDate >= toDate($__fromTime)
+                              AND packetDate <= toDate($__toTime)
+                              AND $__timeFilter(packetDateTime)
+                              AND ipProtocolVersion = if('$protocol_version'='asn_metrics_ipv4',4,6)
+                              AND srcAsn=$asn
                               AND (
                           '${protocol}' = 'total'
                           OR ('${protocol}' = 'tcp' AND protocol = 6)
                           OR ('${protocol}' = 'udp' AND protocol = 17)
                           OR ('${protocol}' = 'icmp' AND protocol IN (1,58))
                           OR ('${protocol}' = 'fragmented' AND ipFragmented != 0)
-                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags, 2) != 0)
+                          OR ('${protocol}' = 'tcp_syn' AND protocol = 6 AND bitAnd(flags,2) != 0)
                         )
-                            GROUP BY agentIpAddress, inputInterface, outputInterface
-                            ORDER BY sum(numberOfPackets * sampleRatio) DESC
-                            LIMIT 10
+                            GROUP BY agentIpAddress,inputInterface,outputInterface
+                            ORDER BY sum(numberOfPackets*sampleRatio) DESC
+                            LIMIT 12
                           )
-                        GROUP BY time, path
-
-                        ORDER BY time, path
+                        GROUP BY time,path
+                        ORDER BY time,path
                   refId: A
                   hidden: false
             transformations: []
@@ -2494,7 +2760,7 @@ spec:
                   barAlignment: 0
                   barWidthFactor: 0.6
                   drawStyle: line
-                  fillOpacity: 8
+                  fillOpacity: 18
                   gradientMode: none
                   hideFrom:
                     legend: false
@@ -2511,7 +2777,7 @@ spec:
                   spanNulls: true
                   stacking:
                     group: A
-                    mode: none
+                    mode: normal
                   thresholdsStyle:
                     mode: 'off'
               overrides: []
@@ -3354,6 +3620,33 @@ spec:
             x: 0
             'y': 84
             width: 12
+            height: 12
+            element:
+              kind: ElementReference
+              name: panel-23
+        - kind: GridLayoutItem
+          spec:
+            x: 12
+            'y': 84
+            width: 12
+            height: 12
+            element:
+              kind: ElementReference
+              name: panel-24
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 116
+            width: 24
+            height: 16
+            element:
+              kind: ElementReference
+              name: panel-25
+        - kind: GridLayoutItem
+          spec:
+            x: 0
+            'y': 96
+            width: 12
             height: 10
             element:
               kind: ElementReference
@@ -3361,7 +3654,7 @@ spec:
         - kind: GridLayoutItem
           spec:
             x: 12
-            'y': 84
+            'y': 96
             width: 12
             height: 10
             element:
@@ -3370,7 +3663,7 @@ spec:
         - kind: GridLayoutItem
           spec:
             x: 0
-            'y': 94
+            'y': 106
             width: 12
             height: 10
             element:
@@ -3379,39 +3672,12 @@ spec:
         - kind: GridLayoutItem
           spec:
             x: 12
-            'y': 94
+            'y': 106
             width: 12
             height: 10
             element:
               kind: ElementReference
               name: panel-29
-        - kind: GridLayoutItem
-          spec:
-            x: 0
-            'y': 104
-            width: 12
-            height: 10
-            element:
-              kind: ElementReference
-              name: panel-23
-        - kind: GridLayoutItem
-          spec:
-            x: 12
-            'y': 104
-            width: 12
-            height: 10
-            element:
-              kind: ElementReference
-              name: panel-24
-        - kind: GridLayoutItem
-          spec:
-            x: 0
-            'y': 114
-            width: 24
-            height: 13
-            element:
-              kind: ElementReference
-              name: panel-25
   links: []
   liveNow: false
   preload: false
@@ -3500,4 +3766,55 @@ spec:
         hide: dontHide
         skipUrlSync: false
         description: Protocol/vector used for bandwidth, PPS and packet-size panels
+        allowCustomValue: false
+    - kind: CustomVariable
+      spec:
+        name: rate_window
+        query: '10 sec : 10, 30 sec : 30, 1 min : 60, 5 min : 300'
+        current:
+          text: 30 sec
+          value: '30'
+        options:
+          - selected: false
+            text: 10 sec
+            value: '10'
+          - selected: true
+            text: 30 sec
+            value: '30'
+          - selected: false
+            text: 1 min
+            value: '60'
+          - selected: false
+            text: 5 min
+            value: '300'
+        multi: false
+        includeAll: false
+        label: Recent rate window
+        hide: dontHide
+        skipUrlSync: false
+        description: Window ending at dashboard To time for Recent bitrate/PPS.
+        allowCustomValue: false
+    - kind: CustomVariable
+      spec:
+        name: rank_by
+        query: 'Volume : volume, Recent bitrate : recent_bps, Recent PPS : recent_pps'
+        current:
+          text: Recent bitrate
+          value: recent_bps
+        options:
+          - selected: false
+            text: Volume
+            value: volume
+          - selected: true
+            text: Recent bitrate
+            value: recent_bps
+          - selected: false
+            text: Recent PPS
+            value: recent_pps
+        multi: false
+        includeAll: false
+        label: Rank top tables by
+        hide: dontHide
+        skipUrlSync: false
+        description: Ranking only; all volume and recent-rate columns remain visible.
         allowCustomValue: false
